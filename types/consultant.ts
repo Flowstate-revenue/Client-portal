@@ -9,6 +9,7 @@ export interface Consultant {
   zipCodes: string[]
   spanishSpeaker: boolean
   ghlUserId: string | null
+  ghlLocationId: string | null
   ghlSyncStatus: GHLSyncStatus
   active: boolean
   createdAt: string
