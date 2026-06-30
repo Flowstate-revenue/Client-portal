@@ -59,7 +59,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-foreground">Flowstate Portal</span>
-          <span className="text-[10px] text-muted-foreground">v1.0.0</span>
+          <span className="text-[10px] text-muted-foreground">v1.0.2</span>
         </div>
       </div>
     </div>
