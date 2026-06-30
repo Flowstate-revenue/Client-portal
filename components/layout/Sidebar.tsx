@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BarChart2, Receipt, Users, X } from 'lucide-react'
+import Logo from '@/components/ui/Logo'
 
 const NAV_ITEMS = [
   { label: 'Billing', icon: Receipt, href: '/billing' },
@@ -20,13 +21,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const content = (
     <div className="flex flex-col h-full bg-card border-r border-border w-64">
-      {/* Logo placeholder - single line image swap placeholder */}
-      <div className="flex items-center gap-3 px-6 h-14 border-b border-border">
-        {/* Replace the div below with <img src={LOGO_URL} /> to load a custom logo */}
-        <div className="flex items-center justify-center w-8 h-8 rounded bg-primary text-primary-foreground font-extrabold text-sm">
-          FS
-        </div>
-        <span className="font-extrabold text-lg tracking-wider text-foreground">FLOWSTATE</span>
+      <div className="flex items-center px-6 h-14 border-b border-border">
+        <Logo variant="wordmark" height={20} />
       </div>
 
       {/* Navigation */}
@@ -54,9 +50,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-4 border-t border-border flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
-          FS
-        </div>
+        <Logo variant="icon" height={32} className="rounded-full" />
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-foreground">Flowstate Portal</span>
           <span className="text-[10px] text-muted-foreground">v1.0.0</span>

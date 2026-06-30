@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, Mail, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import Logo from '@/components/ui/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -50,13 +51,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
-          {/* Logo placeholder */}
-          <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-card border border-border text-primary font-bold text-xl mb-4">
-            FS
-          </div>
-          <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight text-foreground">
-            FLOWSTATE
-          </h2>
+          <Logo variant="wordmark" height={36} className="mb-4" />
           <p className="mt-2 text-center text-sm text-muted-foreground">
             Sign in to your client portal
           </p>
