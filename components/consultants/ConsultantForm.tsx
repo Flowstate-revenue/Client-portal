@@ -3,6 +3,7 @@
 import { useState, useRef, KeyboardEvent } from 'react'
 import Modal from '@/components/ui/Modal'
 import ZipTag from '@/components/ui/ZipTag'
+import Button from '@/components/ui/Button'
 import type { Consultant, ConsultantFormData } from '@/types/consultant'
 
 interface ConsultantFormProps {
@@ -22,11 +23,11 @@ const EMPTY_FORM: ConsultantFormData = {
 }
 
 const inputStyle: React.CSSProperties = {
-  backgroundColor: '#08090D',
-  border: '1px solid #1E2130',
+  backgroundColor: 'var(--background)',
+  border: '1px solid var(--border)',
   borderRadius: '0.5rem',
   padding: '0.625rem 0.75rem',
-  color: '#F8F9FA',
+  color: 'var(--foreground)',
   fontSize: '0.875rem',
   width: '100%',
   outline: 'none',
@@ -37,7 +38,7 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '0.75rem',
   fontWeight: 500,
-  color: '#6B7280',
+  color: 'var(--subtle)',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   marginBottom: '0.375rem',
@@ -78,8 +79,8 @@ function StyledInput({
       placeholder={placeholder}
       style={{
         ...inputStyle,
-        borderColor: focused ? '#F59E0B' : '#1E2130',
-        boxShadow: focused ? '0 0 0 2px #F59E0B' : 'none',
+        borderColor: focused ? 'var(--primary)' : 'var(--border)',
+        boxShadow: focused ? '0 0 0 2px var(--primary)' : 'none',
       }}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
@@ -121,8 +122,8 @@ function ZipInput({
       style={{
         ...inputStyle,
         padding: '0.5rem 0.75rem',
-        borderColor: focused ? '#F59E0B' : '#1E2130',
-        boxShadow: focused ? '0 0 0 2px #F59E0B' : 'none',
+        borderColor: focused ? 'var(--primary)' : 'var(--border)',
+        boxShadow: focused ? '0 0 0 2px var(--primary)' : 'none',
         minHeight: '42px',
         width: '100%',
         height: 'auto',
@@ -151,7 +152,7 @@ function ZipInput({
           background: 'transparent',
           border: 'none',
           outline: 'none',
-          color: '#F8F9FA',
+          color: 'var(--foreground)',
           fontSize: '0.875rem',
           flexGrow: 1,
           minWidth: '120px',
@@ -179,7 +180,7 @@ function Toggle({
         width: '40px',
         height: '22px',
         borderRadius: '11px',
-        backgroundColor: checked ? '#F59E0B' : '#1E2130',
+        backgroundColor: checked ? 'var(--primary)' : 'var(--border)',
         border: 'none',
         padding: 0,
         transition: 'background-color 150ms',
@@ -193,7 +194,7 @@ function Toggle({
           width: '16px',
           height: '16px',
           borderRadius: '50%',
-          backgroundColor: checked ? '#ffffff' : '#6B7280',
+          backgroundColor: checked ? '#ffffff' : 'var(--subtle)',
           transition: 'left 150ms, background-color 150ms',
         }}
       />
@@ -238,7 +239,7 @@ export default function ConsultantForm({
     <Modal onClose={onClose}>
       <h2
         className="text-lg font-semibold mb-5 pr-6"
-        style={{ color: '#F8F9FA' }}
+        style={{ color: 'var(--foreground)' }}
       >
         {title}
       </h2>
@@ -301,39 +302,16 @@ export default function ConsultantForm({
 
         {/* Footer */}
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm transition-colors duration-150 cursor-pointer"
-            style={{
-              border: '1px solid #1E2130',
-              color: '#9CA3AF',
-              backgroundColor: 'transparent',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#F59E0B'
-              e.currentTarget.style.color = '#F8F9FA'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#1E2130'
-              e.currentTarget.style.color = '#9CA3AF'
-            }}
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 cursor-pointer"
-            style={{ backgroundColor: '#F59E0B', color: '#030712' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#D97706')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F59E0B')}
-          >
+          </Button>
+          <Button type="submit" variant="primary">
             {mode === 'add' ? 'Save Consultant' : 'Update Consultant'}
-          </button>
+          </Button>
         </div>
 
         {mode === 'add' && (
-          <p className="text-xs italic" style={{ color: '#6B7280' }}>
+          <p className="text-xs italic" style={{ color: 'var(--subtle)' }}>
             Saving will create this user in GoHighLevel and return their User ID.
           </p>
         )}

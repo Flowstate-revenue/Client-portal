@@ -100,8 +100,8 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
         return true
       })
       .sort((a, b) => {
-        let valA: any = a.event_date
-        let valB: any = b.event_date
+        let valA: number
+        let valB: number
 
         if (sortBy === 'value') {
           valA = Number(a.unit_price) || 0
@@ -123,7 +123,7 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
   const metrics = useMemo(() => {
     // We compute metrics specifically from all matching/filtered events in the current view
     let openBalance = 0
-    let totalCount = processedEvents.length
+    const totalCount = processedEvents.length
     const outcomeCounts: Record<string, number> = {
       sit: 0,
       proposal_followup: 0,
@@ -231,7 +231,7 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
           {activeClientId && (
             <button
               onClick={handleManageBilling}
-              className="inline-flex items-center gap-2 bg-primary hover:bg-amber-600 text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md"
             >
               <CreditCard size={16} />
               <span>Manage Billing</span>

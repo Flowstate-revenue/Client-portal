@@ -25,15 +25,15 @@ export default function Modal({ onClose, children }: ModalProps) {
     >
       <div
         className="relative w-full max-w-lg mx-4 rounded-xl p-6"
-        style={{ backgroundColor: '#0F1117', border: '1px solid #1E2130' }}
+        style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 rounded-md transition-colors duration-150 cursor-pointer"
-          style={{ color: '#6B7280' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#F8F9FA')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B7280')}
+          style={{ color: 'var(--subtle)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--subtle)')}
         >
           <X size={18} />
         </button>

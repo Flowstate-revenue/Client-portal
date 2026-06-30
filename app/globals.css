@@ -11,16 +11,24 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
+  --color-line: var(--line);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
@@ -29,50 +37,72 @@
   --radius-sm: calc(var(--radius) - 4px);
 }
 
-/* TODO: replace with the Flowstate website design-system token values */
+/*
+ * Flowstate design-system tokens.
+ * Source of truth: the "flowstate-website" skill (FlowstateRevenue.com brand).
+ * See DESIGN-SYSTEM.md in this repo for the full reference and usage rules.
+ * Brand accent is blue (#3366FF); green/amber/red are reserved for semantic
+ * status only (success/warning/error) — never decoration.
+ */
 :root {
   --background: #ffffff;
-  --foreground: #111827;
+  --foreground: #0D111A;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #0D111A;
   --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #f59e0b; /* accent */
+  --popover-foreground: #0D111A;
+  --primary: #3366FF; /* blue */
+  --primary-hover: #2952CC;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #1f2937;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #f59e0b;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #1E293B;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --subtle: #94A3B8; /* tertiary text, placeholders */
+  --accent: #F1F5F9;
+  --accent-foreground: #0D111A;
+  --destructive: #EF4444; /* red */
+  --destructive-hover: #DC2626;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #f59e0b;
+  --success: #10B981; /* green */
+  --success-foreground: #ffffff;
+  --warning: #F59E0B; /* amber */
+  --warning-foreground: #1F2937;
+  --border: #E2E8F0;
+  --line: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #3366FF;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: #08090D; /* bg-base */
-  --foreground: #F8F9FA; /* text-primary */
-  --card: #0F1117; /* bg-surface */
-  --card-foreground: #F8F9FA;
-  --popover: #161820; /* bg-elevated */
-  --popover-foreground: #F8F9FA;
-  --primary: #F59E0B; /* accent */
-  --primary-foreground: #08090D;
-  --secondary: #1E2130; /* bg-border */
-  --secondary-foreground: #F8F9FA;
-  --muted: #161820; /* bg-elevated */
-  --muted-foreground: #9CA3AF; /* text-secondary */
-  --accent: #F59E0B;
-  --accent-foreground: #08090D;
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-  --border: #1E2130; /* bg-border */
-  --input: #1E2130;
-  --ring: #F59E0B;
+  --background: #0D111A; /* void */
+  --foreground: #E2E8F0; /* text */
+  --card: #141926; /* deep */
+  --card-foreground: #E2E8F0;
+  --popover: #1D2333; /* elevated */
+  --popover-foreground: #E2E8F0;
+  --primary: #3366FF; /* blue */
+  --primary-hover: #4D7CFF; /* blue-hover */
+  --primary-foreground: #ffffff;
+  --secondary: #1D2333; /* elevated */
+  --secondary-foreground: #E2E8F0;
+  --muted: #141926; /* deep */
+  --muted-foreground: #94A3B8; /* muted */
+  --subtle: #64748B; /* tertiary text, placeholders */
+  --accent: #1D2333; /* elevated, used for hover surfaces */
+  --accent-foreground: #E2E8F0;
+  --destructive: #EF4444; /* red */
+  --destructive-hover: #DC2626;
+  --destructive-foreground: #ffffff;
+  --success: #10B981; /* green */
+  --success-foreground: #ffffff;
+  --warning: #F59E0B; /* amber */
+  --warning-foreground: #0D111A;
+  --border: #2A303F; /* line — used broadly for dividers and standard card/UI borders */
+  --line: #2A303F;
+  --input: #2A303F;
+  --ring: #3366FF;
 }
 
 *,

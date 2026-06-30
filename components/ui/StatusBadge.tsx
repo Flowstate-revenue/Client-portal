@@ -8,25 +8,25 @@ const CONFIG: Record<GHLSyncStatus, { label: string; style: React.CSSProperties 
   synced: {
     label: 'Synced',
     style: {
-      backgroundColor: 'rgba(6,78,59,0.6)',
+      backgroundColor: 'rgba(16,185,129,0.14)',
       color: '#34D399',
-      border: '1px solid rgba(6,95,70,0.4)',
+      border: '1px solid rgba(16,185,129,0.3)',
     },
   },
   pending: {
     label: 'Pending',
     style: {
-      backgroundColor: 'rgba(120,53,15,0.6)',
+      backgroundColor: 'rgba(245,158,11,0.14)',
       color: '#FCD34D',
-      border: '1px solid rgba(146,64,14,0.4)',
+      border: '1px solid rgba(245,158,11,0.3)',
     },
   },
   error: {
     label: 'Error',
     style: {
-      backgroundColor: 'rgba(127,29,29,0.6)',
+      backgroundColor: 'rgba(239,68,68,0.14)',
       color: '#F87171',
-      border: '1px solid rgba(153,27,27,0.4)',
+      border: '1px solid rgba(239,68,68,0.3)',
     },
   },
 }

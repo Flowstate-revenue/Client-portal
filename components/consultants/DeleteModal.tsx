@@ -1,6 +1,7 @@
 'use client'
 
 import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import { CheckCircle, AlertTriangle } from 'lucide-react'
 import type { Consultant } from '@/types/consultant'
 
@@ -24,7 +25,7 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
 
   return (
     <Modal onClose={onClose}>
-      <h2 className="text-lg font-semibold mb-4 pr-6" style={{ color: '#F8F9FA' }}>
+      <h2 className="text-lg font-semibold mb-4 pr-6" style={{ color: 'var(--foreground)' }}>
         Delete {fullName}?
       </h2>
 
@@ -32,19 +33,19 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
       <div
         className="rounded-lg p-4 mb-4 text-sm leading-relaxed"
         style={{
-          backgroundColor: '#161820',
-          border: '1px solid #1E2130',
-          color: '#9CA3AF',
+          backgroundColor: 'var(--popover)',
+          border: '1px solid var(--border)',
+          color: 'var(--muted-foreground)',
         }}
       >
         <p className="mb-2">Deleting this consultant will trigger the following:</p>
         <ol className="list-decimal list-inside space-y-1">
           <li>
-            All leads assigned to <strong style={{ color: '#F8F9FA' }}>{fullName}</strong> will be
+            All leads assigned to <strong style={{ color: 'var(--foreground)' }}>{fullName}</strong> will be
             tagged &ldquo;reassign&rdquo; in GHL
           </li>
           <li>
-            <strong style={{ color: '#F8F9FA' }}>{fullName}</strong>&apos;s GHL user account will be
+            <strong style={{ color: 'var(--foreground)' }}>{fullName}</strong>&apos;s GHL user account will be
             removed
           </li>
           <li>Tagged leads will be re-matched to consultants by zip code</li>
@@ -58,8 +59,8 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
           <div
             className="rounded-lg p-3 text-xs"
             style={{
-              backgroundColor: 'rgba(120,53,15,0.4)',
-              border: '1px solid rgba(146,64,14,0.3)',
+              backgroundColor: 'rgba(245,158,11,0.12)',
+              border: '1px solid rgba(245,158,11,0.3)',
               color: '#FCD34D',
             }}
           >
@@ -69,7 +70,7 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
                 <li key={zip} className="flex items-center gap-2">
                   <AlertTriangle size={12} style={{ flexShrink: 0 }} />
                   <span className="font-mono">{zip}</span>
-                  <span style={{ color: '#D97706' }}>— no backup consultant</span>
+                  <span style={{ color: '#FCD34D' }}>— no backup consultant</span>
                 </li>
               ))}
             </ul>
@@ -80,8 +81,8 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
           <div
             className="rounded-lg p-3 text-xs"
             style={{
-              backgroundColor: 'rgba(6,78,59,0.4)',
-              border: '1px solid rgba(6,95,70,0.3)',
+              backgroundColor: 'rgba(16,185,129,0.12)',
+              border: '1px solid rgba(16,185,129,0.3)',
               color: '#6EE7B7',
             }}
           >
@@ -103,36 +104,12 @@ export default function DeleteModal({ consultant, onConfirm, onClose }: DeleteMo
 
       {/* Footer */}
       <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg px-4 py-2 text-sm transition-colors duration-150 cursor-pointer"
-          style={{
-            border: '1px solid #1E2130',
-            color: '#9CA3AF',
-            backgroundColor: 'transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#F59E0B'
-            e.currentTarget.style.color = '#F8F9FA'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#1E2130'
-            e.currentTarget.style.color = '#9CA3AF'
-          }}
-        >
+        <Button type="button" variant="secondary" onClick={onClose}>
           Cancel — Go Back
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 cursor-pointer"
-          style={{ backgroundColor: '#DC2626', color: '#ffffff' }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#B91C1C')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#DC2626')}
-        >
+        </Button>
+        <Button type="button" variant="destructive" onClick={onConfirm}>
           Confirm Delete
-        </button>
+        </Button>
       </div>
     </Modal>
   )

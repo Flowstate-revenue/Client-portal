@@ -12,7 +12,7 @@ interface ConsultantTableProps {
 }
 
 const TH = 'text-xs font-medium uppercase tracking-wider px-6 py-3'
-const thStyle: React.CSSProperties = { color: '#6B7280' }
+const thStyle: React.CSSProperties = { color: 'var(--subtle)' }
 
 function TerritoryCell({ zipCodes }: { zipCodes: string[] }) {
   const MAX_VISIBLE = 3
@@ -25,7 +25,7 @@ function TerritoryCell({ zipCodes }: { zipCodes: string[] }) {
         <ZipTag key={zip} zip={zip} />
       ))}
       {overflow > 0 && (
-        <span className="text-xs px-1 py-0.5" style={{ color: '#6B7280' }}>
+        <span className="text-xs px-1 py-0.5" style={{ color: 'var(--subtle)' }}>
           +{overflow} more
         </span>
       )}
@@ -41,11 +41,11 @@ export default function ConsultantTable({
   return (
     <div
       className="rounded-xl overflow-hidden"
-      style={{ backgroundColor: '#0F1117', border: '1px solid #1E2130' }}
+      style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
     >
       <table className="w-full">
         <thead>
-          <tr style={{ borderBottom: '1px solid #1E2130' }}>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
             <th className={`${TH} text-left w-48`} style={thStyle}>
               Name
             </th>
@@ -79,10 +79,10 @@ export default function ConsultantTable({
                 style={
                   isLast
                     ? {}
-                    : { borderBottom: '1px solid #1E2130' }
+                    : { borderBottom: '1px solid var(--border)' }
                 }
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#161820'
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'var(--popover)'
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLTableRowElement).style.backgroundColor = 'transparent'
@@ -92,7 +92,7 @@ export default function ConsultantTable({
                 <td className="px-6 py-3.5">
                   <span
                     className="text-sm font-medium"
-                    style={{ color: '#F8F9FA' }}
+                    style={{ color: 'var(--foreground)' }}
                   >
                     {c.firstName} {c.lastName}
                   </span>
@@ -100,14 +100,14 @@ export default function ConsultantTable({
 
                 {/* Email */}
                 <td className="px-6 py-3.5">
-                  <span className="text-sm" style={{ color: '#9CA3AF' }}>
+                  <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {c.email}
                   </span>
                 </td>
 
                 {/* Phone */}
                 <td className="px-6 py-3.5 whitespace-nowrap">
-                  <span className="text-sm" style={{ color: '#9CA3AF' }}>
+                  <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {c.phone}
                   </span>
                 </td>
@@ -120,9 +120,9 @@ export default function ConsultantTable({
                 {/* Spanish */}
                 <td className="px-6 py-3.5 text-center">
                   {c.spanishSpeaker ? (
-                    <Check size={16} style={{ color: '#10B981', margin: '0 auto' }} />
+                    <Check size={16} style={{ color: 'var(--success)', margin: '0 auto' }} />
                   ) : (
-                    <span style={{ color: '#6B7280' }}>—</span>
+                    <span style={{ color: 'var(--subtle)' }}>—</span>
                   )}
                 </td>
 
@@ -136,13 +136,13 @@ export default function ConsultantTable({
                   <div className="flex items-center justify-end gap-1">
                     <ActionButton
                       icon={Pencil}
-                      hoverColor="#F59E0B"
+                      hoverColor="var(--primary)"
                       onClick={() => onEdit(c)}
                       title="Edit consultant"
                     />
                     <ActionButton
                       icon={Trash2}
-                      hoverColor="#F87171"
+                      hoverColor="var(--destructive)"
                       onClick={() => onDelete(c)}
                       title="Delete consultant"
                     />
@@ -171,15 +171,15 @@ function ActionButton({ icon: Icon, hoverColor, onClick, title }: ActionButtonPr
       onClick={onClick}
       title={title}
       className="p-1.5 rounded-md transition-colors duration-150 cursor-pointer"
-      style={{ color: '#6B7280', backgroundColor: 'transparent' }}
+      style={{ color: 'var(--subtle)', backgroundColor: 'transparent' }}
       onMouseEnter={(e) => {
         const el = e.currentTarget
         el.style.color = hoverColor
-        el.style.backgroundColor = '#1E2130'
+        el.style.backgroundColor = 'var(--border)'
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget
-        el.style.color = '#6B7280'
+        el.style.color = 'var(--subtle)'
         el.style.backgroundColor = 'transparent'
       }}
     >

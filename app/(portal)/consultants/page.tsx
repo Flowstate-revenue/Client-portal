@@ -6,6 +6,7 @@ import type { Consultant, ConsultantFormData } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
 import ConsultantForm from '@/components/consultants/ConsultantForm'
 import DeleteModal from '@/components/consultants/DeleteModal'
+import Button from '@/components/ui/Button'
 
 const MOCK_CONSULTANTS: Consultant[] = [
   {
@@ -112,12 +113,12 @@ export default function ConsultantsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold" style={{ color: '#F8F9FA' }}>
+          <h1 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
             Solar Consultants
           </h1>
           <span
             className="rounded-full px-2.5 py-0.5 text-sm"
-            style={{ backgroundColor: '#1E2130', color: '#9CA3AF' }}
+            style={{ backgroundColor: 'var(--border)', color: 'var(--muted-foreground)' }}
           >
             {consultants.length}
           </span>
@@ -125,31 +126,15 @@ export default function ConsultantsPage() {
 
         <div className="flex items-center gap-2">
           {/* Filters — UI only / disabled */}
-          <button
-            type="button"
-            disabled
-            className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors duration-150 cursor-not-allowed opacity-50"
-            style={{
-              border: '1px solid #1E2130',
-              color: '#9CA3AF',
-              backgroundColor: 'transparent',
-            }}
-          >
+          <Button type="button" variant="secondary" disabled>
             <SlidersHorizontal size={16} />
             Filters
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            onClick={() => setModal({ type: 'add' })}
-            className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 cursor-pointer"
-            style={{ backgroundColor: '#F59E0B', color: '#030712' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#D97706')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F59E0B')}
-          >
+          <Button type="button" variant="primary" onClick={() => setModal({ type: 'add' })}>
             <Plus size={16} />
             Add Consultant
-          </button>
+          </Button>
         </div>
       </div>
 
