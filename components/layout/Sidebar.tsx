@@ -53,7 +53,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <Logo variant="icon" height={32} className="rounded-full" />
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-foreground">Flowstate Portal</span>
-          <span className="text-[10px] text-muted-foreground">v1.0.2</span>
+          <span className="text-[10px] text-muted-foreground">v1.0.3</span>
         </div>
       </div>
     </div>
