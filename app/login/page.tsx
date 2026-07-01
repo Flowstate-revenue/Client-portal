@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, Mail, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
 export default function LoginPage() {
@@ -103,6 +104,12 @@ export default function LoginPage() {
                   disabled={loading}
                 />
               </div>
+            </div>
+
+            <div className="flex justify-end -mt-2">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot password?
+              </Link>
             </div>
 
             <div>

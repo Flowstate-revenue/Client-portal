@@ -86,15 +86,20 @@ export default async function ConsultantsPage({
   const { data: rows, error } = await query.order('created_at', { ascending: false })
   if (error) console.error('consultants query failed:', error)
 
-  // per-client GHL form URL (falls back to a global env default)
+  // Compose the GHL form URL from the stored form ID + the client's branded
+  // domain. Works on the default GHL domain until branded_domain is set on the
+  // DNS call, then upgrades automatically. Falls back to a global env default.
   let formUrl: string | null = process.env.NEXT_PUBLIC_GHL_CONSULTANT_FORM_URL ?? null
   if (activeClientId) {
     const { data: c } = await supabase
       .from('clients')
-      .select('consultant_form_url')
+      .select('consultant_form_id, branded_domain')
       .eq('id', activeClientId)
       .maybeSingle()
-    if (c?.consultant_form_url) formUrl = c.consultant_form_url
+    if (c?.consultant_form_id) {
+      const domain = c.branded_domain || 'api.leadconnectorhq.com'
+      formUrl = `https://${domain}/widget/form/${c.consultant_form_id}`
+    }
   }
 
   const consultants = (rows ?? []).map((r) => mapRow(r as Row))

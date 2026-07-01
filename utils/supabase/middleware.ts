@@ -44,14 +44,15 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isAuthRoute = url.pathname.startsWith('/auth')
-  const isLoginRoute = url.pathname === '/login'
+  const publicPaths = ['/login', '/forgot-password', '/update-password']
+  const isPublic = isAuthRoute || publicPaths.includes(url.pathname)
 
-  if (!user && !isAuthRoute && !isLoginRoute) {
+  if (!user && !isPublic) {
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && (isLoginRoute || url.pathname === '/')) {
+  if (user && (url.pathname === '/login' || url.pathname === '/')) {
     url.pathname = '/billing'
     return NextResponse.redirect(url)
   }
