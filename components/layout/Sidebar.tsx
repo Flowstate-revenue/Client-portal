@@ -8,7 +8,7 @@ import Logo from '@/components/ui/Logo'
 const NAV_ITEMS = [
   { label: 'Billing', icon: Receipt, href: '/billing' },
   { label: 'Dashboard', icon: BarChart2, href: '/dashboard' },
-  { label: 'Sales Reps', icon: Users, href: '/reps' },
+  { label: 'Sales Reps', icon: Users, href: '/consultants' },
 ] as const
 
 interface SidebarProps {
