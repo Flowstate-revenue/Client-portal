@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lock, Loader2 } from 'lucide-react'
+import { Lock, Mail, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Logo from '@/components/ui/Logo'
 import { createClient } from '@/utils/supabase/client'
@@ -12,6 +12,7 @@ export default function UpdatePasswordPage() {
   const router = useRouter()
   const [checking, setChecking] = useState(true)
   const [ready, setReady] = useState(false)
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +21,7 @@ export default function UpdatePasswordPage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? '')
       setReady(Boolean(data.user))
       setChecking(false)
     })
@@ -72,6 +74,23 @@ export default function UpdatePasswordPage() {
             </div>
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-2">Email</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    value={email}
+                    readOnly
+                    className="block w-full pl-10 pr-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground text-sm cursor-not-allowed focus:outline-none"
+                  />
+                </div>
+              </div>
               <PasswordField id="password" label="New Password" value={password} onChange={setPassword} loading={loading} autoComplete="new-password" />
               <PasswordField id="confirm" label="Confirm Password" value={confirm} onChange={setConfirm} loading={loading} autoComplete="new-password" />
               <button
