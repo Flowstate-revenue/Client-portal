@@ -2,6 +2,21 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  const url = request.nextUrl.clone()
+
+  // NEVER run session logic on the auth handshake or static assets.
+  // The /auth/* route handlers set their own auth cookies (sign-out + verify);
+  // if we refresh/touch cookies here we can clobber that Set-Cookie and let a
+  // stale session (e.g. an already-logged-in admin) survive the confirm link.
+  const isStaticFile =
+    url.pathname.includes('.') ||
+    url.pathname.startsWith('/_next') ||
+    url.pathname === '/favicon.ico'
+  const isAuthRoute = url.pathname.startsWith('/auth')
+  if (isStaticFile || isAuthRoute) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -31,21 +46,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const url = request.nextUrl.clone()
-  
-  // Exclude static files, images, favicon, api routes that don't need protection
-  const isStaticFile = 
-    url.pathname.includes('.') || 
-    url.pathname.startsWith('/_next') || 
-    url.pathname === '/favicon.ico'
-  
-  if (isStaticFile) {
-    return supabaseResponse
-  }
-
-  const isAuthRoute = url.pathname.startsWith('/auth')
   const publicPaths = ['/login', '/forgot-password', '/update-password']
-  const isPublic = isAuthRoute || publicPaths.includes(url.pathname)
+  const isPublic = publicPaths.includes(url.pathname)
 
   if (!user && !isPublic) {
     url.pathname = '/login'

@@ -25,8 +25,10 @@ export async function GET(request: Request) {
 
   // Clear any existing session first, so a link opened while someone else is
   // already signed in can never carry the wrong identity through. Only the
-  // identity proven by this link's token should take effect.
-  await supabase.auth.signOut()
+  // identity proven by this link's token should take effect. Scope 'local'
+  // clears just THIS browser's cookies — it won't revoke that user's real
+  // sessions on their other devices.
+  await supabase.auth.signOut({ scope: 'local' })
 
   // Preferred: server-side OTP verification (works regardless of browser/session)
   if (token_hash && type) {
