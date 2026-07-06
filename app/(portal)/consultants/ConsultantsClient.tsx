@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SlidersHorizontal, Plus } from 'lucide-react'
+import { SlidersHorizontal, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Consultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
@@ -17,30 +17,13 @@ interface Props {
   formUrl: string | null
 }
 
-// Build a prefilled GHL form URL. The form's query keys must match these names.
-function buildFormUrl(base: string, c?: Consultant): string {
-  try {
-    const u = new URL(base)
-    if (c) {
-      u.searchParams.set('ghl_user_id', c.ghlUserId ?? '')
-      u.searchParams.set('first_name', c.firstName)
-      u.searchParams.set('last_name', c.lastName)
-      u.searchParams.set('email', c.email)
-      u.searchParams.set('phone', c.phone)
-      u.searchParams.set('zip_codes', c.zipCodes.join(','))
-      u.searchParams.set('spanish', String(c.spanishSpeaker))
-    }
-    return u.toString()
-  } catch {
-    return base
-  }
-}
-
 export default function ConsultantsClient({ consultants, role, activeClientId, formUrl }: Props) {
   const router = useRouter()
   const [list, setList] = useState<Consultant[]>(consultants)
   const [deleting, setDeleting] = useState<Consultant | null>(null)
   const [editing, setEditing] = useState<Consultant | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [query, setQuery] = useState('')
 
   // re-sync when the server re-renders with fresh data
   // (React-recommended "reset state on prop change" pattern — not an effect)
@@ -59,17 +42,14 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
     return () => window.removeEventListener('focus', onFocus)
   }, [router])
 
-  function openForm(c?: Consultant) {
+  function openForm() {
     if (!formUrl) {
       toast.error('No consultant form is configured for this client yet.')
       return
     }
-    window.open(buildFormUrl(formUrl, c), '_blank', 'noopener,noreferrer')
-    toast.info(
-      c
-        ? 'Edit form opened — your changes sync back here after you submit.'
-        : 'New consultant form opened.'
-    )
+    // Add only — a blank consultant form needs no prefilled params.
+    window.open(formUrl, '_blank', 'noopener,noreferrer')
+    toast.info('New consultant form opened.')
   }
 
   async function confirmDelete() {
@@ -98,6 +78,17 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
     }
   }
 
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? list.filter(
+        (c) =>
+          `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.phone.toLowerCase().includes(q) ||
+          c.zipCodes.some((z) => z.includes(q))
+      )
+    : list
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -109,12 +100,17 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
             className="rounded-full px-2.5 py-0.5 text-sm"
             style={{ backgroundColor: 'var(--border)', color: 'var(--muted-foreground)' }}
           >
-            {list.length}
+            {filtered.length}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button type="button" variant="secondary" disabled>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowFilters((v) => !v)}
+            title="Search consultants"
+          >
             <SlidersHorizontal size={16} />
             Filters
           </Button>
@@ -122,14 +118,35 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
             type="button"
             variant="primary"
             onClick={() => openForm()}
-            disabled={!formUrl}
-            title={formUrl ? 'Add a consultant' : 'Select a client to manage consultants'}
+            title={formUrl ? 'Add a consultant' : 'No consultant form configured yet'}
           >
             <Plus size={16} />
             Add Consultant
           </Button>
         </div>
       </div>
+
+      {showFilters && (
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <div
+              className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
+              style={{ color: 'var(--subtle)' }}
+            >
+              <Search size={16} />
+            </div>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name, email, phone, or zip"
+              autoFocus
+              className="w-full rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+            />
+          </div>
+        </div>
+      )}
 
       {list.length === 0 ? (
         <div
@@ -144,8 +161,19 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
             ? 'No consultants to show — select a client to manage their team.'
             : 'No consultants yet. Use “Add Consultant” to create the first one.'}
         </div>
+      ) : filtered.length === 0 ? (
+        <div
+          className="rounded-xl p-10 text-center text-sm"
+          style={{
+            backgroundColor: 'var(--card)',
+            border: '1px solid var(--border)',
+            color: 'var(--muted-foreground)',
+          }}
+        >
+          No consultants match your search.
+        </div>
       ) : (
-        <ConsultantTable consultants={list} onEdit={setEditing} onDelete={setDeleting} />
+        <ConsultantTable consultants={filtered} onEdit={setEditing} onDelete={setDeleting} />
       )}
 
       {editing && (

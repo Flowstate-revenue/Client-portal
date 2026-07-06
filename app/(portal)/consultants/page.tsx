@@ -86,9 +86,10 @@ export default async function ConsultantsPage({
   const { data: rows, error } = await query.order('created_at', { ascending: false })
   if (error) console.error('consultants query failed:', error)
 
-  // Compose the GHL form URL from the stored form ID + the client's branded
-  // domain. Works on the default GHL domain until branded_domain is set on the
-  // DNS call, then upgrades automatically. Falls back to a global env default.
+  // Compose the GHL form URL from the stored form ID + domain. Default is
+  // Flowstate's shared links.flowstaterevenue.com (each sub-account serves its
+  // own form from it); a client's own branded_domain overrides it once set.
+  // Falls back to a global env default when no client is selected.
   let formUrl: string | null = process.env.NEXT_PUBLIC_GHL_CONSULTANT_FORM_URL ?? null
   if (activeClientId) {
     const { data: c } = await supabase
@@ -97,7 +98,7 @@ export default async function ConsultantsPage({
       .eq('id', activeClientId)
       .maybeSingle()
     if (c?.consultant_form_id) {
-      const domain = c.branded_domain || 'api.leadconnectorhq.com'
+      const domain = c.branded_domain || 'links.flowstaterevenue.com'
       formUrl = `https://${domain}/widget/form/${c.consultant_form_id}`
     }
   }

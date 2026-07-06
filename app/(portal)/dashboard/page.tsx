@@ -1,17 +1,10 @@
 import { Calendar, TrendingUp, BarChart3, Sparkles } from 'lucide-react'
+import { PRODUCT_LIST } from '@/lib/products'
 
 // Placeholder KPI dashboard. Layout preview only — no live data yet.
 // Everything uses design-system tokens (var(--*)) so it follows light/dark.
-// The five cards map to Flowstate's five billable products; visuals are grayed
-// until we decide exactly what to measure from GHL and how to visualize it.
-
-const PRODUCTS = [
-  { key: 'sit', label: 'Sit Appointments', color: '#f59e0b' },
-  { key: 'proposal_followup', label: 'Proposal Follow-ups', color: '#3b82f6' },
-  { key: 'reactivation', label: 'Reactivations', color: '#a855f7' },
-  { key: 'referral', label: 'Referrals', color: '#14b8a6' },
-  { key: 'review', label: 'Reviews', color: '#f43f5e' },
-] as const
+// The five cards map to Flowstate's five billable products (shared source of
+// truth in lib/products); visuals are grayed until we decide what to measure.
 
 function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
   return (
@@ -81,15 +74,15 @@ export default function DashboardPage() {
 
       {/* Stat cards — one per product */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {PRODUCTS.map((p) => (
+        {PRODUCT_LIST.map((p) => (
           <Card key={p.key}>
             <div className="flex items-center gap-2 mb-4">
               <span
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: p.color, opacity: 0.85 }}
+                style={{ backgroundColor: p.hex, opacity: 0.85 }}
               />
               <span className="text-xs font-medium" style={{ color: 'var(--muted-foreground)' }}>
-                {p.label}
+                {p.labelPlural}
               </span>
             </div>
             <Skeleton className="h-7 w-20 mb-3" />

@@ -1,30 +1,15 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, ArrowUpDown, ChevronDown, Receipt, Calendar, CreditCard, ChevronUp } from 'lucide-react'
+import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import type { BillableEvent } from '@/types/supabase'
+import { PRODUCT_LABELS as OUTCOME_LABELS, PRODUCT_BADGES as OUTCOME_COLORS } from '@/lib/products'
 
 interface BillingClientProps {
   initialEvents: BillableEvent[]
   role: string
   activeClientId: string | null
-}
-
-const OUTCOME_LABELS: Record<string, string> = {
-  sit: 'Sit Appointment',
-  proposal_followup: 'Proposal Follow-up',
-  reactivation: 'Reactivation',
-  referral: 'Referral',
-  review: 'Review',
-}
-
-const OUTCOME_COLORS: Record<string, string> = {
-  sit: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  proposal_followup: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  reactivation: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  referral: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
-  review: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
 }
 
 const STATUS_LABELS: Record<string, string> = {

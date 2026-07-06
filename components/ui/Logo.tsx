@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { useMounted } from '@/hooks/useMounted'
 
 const ASSETS = {
   icon: { dark: '/icon-dark.png', light: '/icon-light.png' },
@@ -22,9 +22,7 @@ interface LogoProps {
  */
 export default function Logo({ variant = 'icon', height = 32, className = '' }: LogoProps) {
   const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
+  const mounted = useMounted()
 
   if (!mounted) {
     return <div style={{ height }} className={className} />

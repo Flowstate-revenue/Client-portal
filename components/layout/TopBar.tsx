@@ -2,9 +2,10 @@
 
 import { useTheme } from 'next-themes'
 import { Sun, Moon, LogOut, Menu } from 'lucide-react'
-import { useEffect, useState, Suspense } from 'react'
+import { Suspense } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Client, PortalUser } from '@/types/supabase'
+import { useMounted } from '@/hooks/useMounted'
 
 interface TopBarProps {
   portalUser: PortalUser | null
@@ -14,9 +15,8 @@ interface TopBarProps {
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
 
-  useEffect(() => setMounted(true), [])
   if (!mounted) return <div className="w-9 h-9" />
 
   return (

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import PortalShell from '@/components/layout/PortalShell'
-import type { Client, PortalUser } from '@/types/supabase'
+import type { Client } from '@/types/supabase'
 
 export default async function PortalLayout({
   children,
