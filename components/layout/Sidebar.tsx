@@ -6,8 +6,8 @@ import { BarChart2, Receipt, Users, X } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 
 const NAV_ITEMS = [
-  { label: 'Billing', icon: Receipt, href: '/billing' },
   { label: 'Dashboard', icon: BarChart2, href: '/dashboard' },
+  { label: 'Billing', icon: Receipt, href: '/billing' },
   { label: 'Sales Reps', icon: Users, href: '/consultants' },
 ] as const
 
@@ -53,7 +53,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <Logo variant="icon" height={32} className="rounded-full" />
         <div className="flex flex-col">
           <span className="text-xs font-semibold text-foreground">Flowstate Portal</span>
-          <span className="text-[10px] text-muted-foreground">v1.0.3</span>
+          <span className="text-[10px] text-muted-foreground">v2.0.1</span>
         </div>
       </div>
     </div>
