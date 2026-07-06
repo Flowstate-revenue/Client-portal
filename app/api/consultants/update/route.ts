@@ -64,7 +64,9 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(secret ? { 'x-flowstate-secret': secret } : {}),
+          // x-flowstate-secret: our own check (scenario filter / body).
+          // x-make-apikey: Make's built-in webhook gate, if you enable it.
+          ...(secret ? { 'x-flowstate-secret': secret, 'x-make-apikey': secret } : {}),
         },
         // secret sent in header AND body so Make can verify with either
         body: JSON.stringify({ action: 'update', secret, consultant_id: body.id, ...result }),
