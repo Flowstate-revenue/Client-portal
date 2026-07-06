@@ -66,7 +66,8 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           ...(secret ? { 'x-flowstate-secret': secret } : {}),
         },
-        body: JSON.stringify({ action: 'update', consultant_id: body.id, ...result }),
+        // secret sent in header AND body so Make can verify with either
+        body: JSON.stringify({ action: 'update', secret, consultant_id: body.id, ...result }),
       })
       synced = res.ok
     } catch {

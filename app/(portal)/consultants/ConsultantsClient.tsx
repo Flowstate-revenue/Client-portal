@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SlidersHorizontal, Plus, Search } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Consultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
@@ -22,7 +22,6 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
   const [list, setList] = useState<Consultant[]>(consultants)
   const [deleting, setDeleting] = useState<Consultant | null>(null)
   const [editing, setEditing] = useState<Consultant | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
   const [query, setQuery] = useState('')
 
   // re-sync when the server re-renders with fresh data
@@ -105,30 +104,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowFilters((v) => !v)}
-            title="Search consultants"
-          >
-            <SlidersHorizontal size={16} />
-            Filters
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => openForm()}
-            title={formUrl ? 'Add a consultant' : 'No consultant form configured yet'}
-          >
-            <Plus size={16} />
-            Add Consultant
-          </Button>
-        </div>
-      </div>
-
-      {showFilters && (
-        <div className="mb-4">
-          <div className="relative max-w-sm">
+          <div className="relative">
             <div
               className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
               style={{ color: 'var(--subtle)' }}
@@ -140,13 +116,21 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name, email, phone, or zip"
-              autoFocus
-              className="w-full rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-48 sm:w-64 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
             />
           </div>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => openForm()}
+            title={formUrl ? 'Add a consultant' : 'No consultant form configured yet'}
+          >
+            <Plus size={16} />
+            Add Consultant
+          </Button>
         </div>
-      )}
+      </div>
 
       {list.length === 0 ? (
         <div
