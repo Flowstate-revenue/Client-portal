@@ -38,7 +38,7 @@ export default function LoginPage() {
       }
 
       toast.success('Successfully logged in')
-      router.push('/billing')
+      router.push('/dashboard')
       router.refresh()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to sign in. Please try again.'

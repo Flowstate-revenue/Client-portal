@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import type { Consultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
 import DeleteModal from '@/components/consultants/DeleteModal'
+import EditModal from '@/components/consultants/EditModal'
 import Button from '@/components/ui/Button'
 
 interface Props {
@@ -39,6 +40,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
   const router = useRouter()
   const [list, setList] = useState<Consultant[]>(consultants)
   const [deleting, setDeleting] = useState<Consultant | null>(null)
+  const [editing, setEditing] = useState<Consultant | null>(null)
 
   // re-sync when the server re-renders with fresh data
   // (React-recommended "reset state on prop change" pattern — not an effect)
@@ -143,7 +145,17 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
             : 'No consultants yet. Use “Add Consultant” to create the first one.'}
         </div>
       ) : (
-        <ConsultantTable consultants={list} onEdit={openForm} onDelete={setDeleting} />
+        <ConsultantTable consultants={list} onEdit={setEditing} onDelete={setDeleting} />
+      )}
+
+      {editing && (
+        <EditModal
+          consultant={editing}
+          onSaved={(updated) =>
+            setList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+          }
+          onClose={() => setEditing(null)}
+        />
       )}
 
       {deleting && (

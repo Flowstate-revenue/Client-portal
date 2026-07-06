@@ -29,8 +29,12 @@ export default function UpdatePasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters.')
+    const hasLower = /[a-z]/.test(password)
+    const hasUpper = /[A-Z]/.test(password)
+    const hasNumber = /[0-9]/.test(password)
+    const hasSpecial = /[^A-Za-z0-9]/.test(password)
+    if (password.length < 8 || !hasLower || !hasUpper || !hasNumber || !hasSpecial) {
+      toast.error('Password must be at least 8 characters and include a lowercase letter, an UPPERCASE letter, a number, and a special character.')
       return
     }
     if (password !== confirm) {
@@ -43,7 +47,7 @@ export default function UpdatePasswordPage() {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
       toast.success('Password saved. Signing you in…')
-      router.push('/billing')
+      router.push('/dashboard')
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save your password.')
@@ -91,7 +95,7 @@ export default function UpdatePasswordPage() {
                   />
                 </div>
               </div>
-              <PasswordField id="password" label="New Password" value={password} onChange={setPassword} loading={loading} autoComplete="new-password" />
+              <PasswordField id="password" label="New Password" value={password} onChange={setPassword} loading={loading} autoComplete="new-password" hint="At least 8 characters, with a lowercase letter, an UPPERCASE letter, a number, and a special character." />
               <PasswordField id="confirm" label="Confirm Password" value={confirm} onChange={setConfirm} loading={loading} autoComplete="new-password" />
               <button
                 type="submit"
@@ -109,9 +113,9 @@ export default function UpdatePasswordPage() {
 }
 
 function PasswordField({
-  id, label, value, onChange, loading, autoComplete,
+  id, label, value, onChange, loading, autoComplete, hint,
 }: {
-  id: string; label: string; value: string; onChange: (v: string) => void; loading: boolean; autoComplete: string
+  id: string; label: string; value: string; onChange: (v: string) => void; loading: boolean; autoComplete: string; hint?: string
 }) {
   return (
     <div>
@@ -133,6 +137,7 @@ function PasswordField({
           disabled={loading}
         />
       </div>
+      {hint ? <p className="mt-2 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
 }

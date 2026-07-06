@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import type { Consultant } from '@/types/consultant'
 import ZipTag from '@/components/ui/ZipTag'
 import StatusBadge from '@/components/ui/StatusBadge'
@@ -58,11 +58,8 @@ export default function ConsultantTable({
             <th className={`${TH} text-left`} style={thStyle}>
               Territory
             </th>
-            <th className={`${TH} text-center w-20`} style={thStyle}>
-              Spanish
-            </th>
             <th className={`${TH} text-center w-24`} style={thStyle}>
-              GHL Sync
+              Sync
             </th>
             <th className={`${TH} text-right w-20`} style={thStyle}>
               Actions
@@ -117,16 +114,7 @@ export default function ConsultantTable({
                   <TerritoryCell zipCodes={c.zipCodes} />
                 </td>
 
-                {/* Spanish */}
-                <td className="px-6 py-3.5 text-center">
-                  {c.spanishSpeaker ? (
-                    <Check size={16} style={{ color: 'var(--success)', margin: '0 auto' }} />
-                  ) : (
-                    <span style={{ color: 'var(--subtle)' }}>—</span>
-                  )}
-                </td>
-
-                {/* GHL Sync */}
+                {/* Sync */}
                 <td className="px-6 py-3.5 text-center">
                   <StatusBadge status={c.ghlSyncStatus} />
                 </td>

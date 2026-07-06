@@ -55,7 +55,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && (url.pathname === '/login' || url.pathname === '/')) {
-    url.pathname = '/billing'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
