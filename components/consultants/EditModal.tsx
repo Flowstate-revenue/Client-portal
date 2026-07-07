@@ -25,7 +25,6 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
   const [firstName, setFirstName] = useState(consultant.firstName)
   const [lastName, setLastName] = useState(consultant.lastName)
   const [phone, setPhone] = useState(consultant.phone)
-  const [active, setActive] = useState(consultant.active)
   const [routingPaused, setRoutingPaused] = useState(consultant.routingPaused)
   const [routingWeight, setRoutingWeight] = useState(consultant.routingWeight)
   const [zipText, setZipText] = useState(consultant.zipCodes.join('\n'))
@@ -52,7 +51,7 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone: phone.trim(),
-          active,
+          active: consultant.active,
           routing_paused: routingPaused,
           routing_weight: routingWeight,
           zip_codes: zipCodes,
@@ -66,7 +65,6 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
-        active,
         routingPaused,
         routingWeight,
         zipCodes: (json.zip_codes as string[]) ?? zipCodes,
@@ -153,50 +151,27 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
         </Field>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-            Active
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={active}
-            disabled={loading}
-            onClick={() => setActive((v) => !v)}
-            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 cursor-pointer disabled:opacity-50"
-            style={{ backgroundColor: active ? 'var(--primary)' : 'var(--border)' }}
-          >
-            <span
-              className="inline-block h-4 w-4 rounded-full bg-white transition-transform duration-150"
-              style={{
-                transform: active ? 'translateX(22px)' : 'translateX(4px)',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-              }}
-            />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
+          <div className="pr-4">
             <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-              Pause routing
+              Receiving leads
             </span>
             <p className="text-xs" style={{ color: 'var(--subtle)' }}>
-              Holiday or leave — stops new leads without removing the rep.
+              On by default. Turn off to pause this rep for holiday or leave — they stay on the team and keep their zips.
             </p>
           </div>
           <button
             type="button"
             role="switch"
-            aria-checked={routingPaused}
+            aria-checked={!routingPaused}
             disabled={loading}
             onClick={() => setRoutingPaused((v) => !v)}
-            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 cursor-pointer disabled:opacity-50"
-            style={{ backgroundColor: routingPaused ? 'var(--destructive)' : 'var(--border)' }}
+            className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-150 cursor-pointer disabled:opacity-50"
+            style={{ backgroundColor: routingPaused ? 'var(--border)' : 'var(--primary)' }}
           >
             <span
               className="inline-block h-4 w-4 rounded-full bg-white transition-transform duration-150"
               style={{
-                transform: routingPaused ? 'translateX(22px)' : 'translateX(4px)',
+                transform: routingPaused ? 'translateX(4px)' : 'translateX(22px)',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
               }}
             />
@@ -218,7 +193,7 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
             ))}
           </select>
           <p className="mt-1 text-xs" style={{ color: 'var(--subtle)' }}>
-            Part-time share vs. other reps on the same zip. A sole rep on a zip always gets 100%.
+            When a zip has more than one rep, this sets how leads split between them. A rep who&apos;s the only one on a zip always gets 100%.
           </p>
         </Field>
 

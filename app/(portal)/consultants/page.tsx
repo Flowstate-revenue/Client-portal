@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import ConsultantsClient from './ConsultantsClient'
+import ConsultantsTabs from './ConsultantsTabs'
 import type { Consultant, GHLSyncStatus } from '@/types/consultant'
+import type { TerritoryZip } from '@/types/territory'
 
 type Row = {
   id: string
@@ -18,6 +19,18 @@ type Row = {
   routing_paused: boolean
   routing_weight: number
   created_at: string
+}
+
+type TerritoryRow = {
+  zip: string
+  last_assigned_at: string | null
+  consultants: {
+    first_name: string | null
+    last_name: string | null
+    routing_paused: boolean
+    routing_weight: number
+  } | null
+  zipcodes: { city: string | null; state: string | null } | null
 }
 
 function mapRow(r: Row): Consultant {
@@ -109,12 +122,43 @@ export default async function ConsultantsPage({
 
   const consultants = (rows ?? []).map((r) => mapRow(r as Row))
 
+  // Territory coverage (read-only view). RLS scopes to the client; admins can
+  // view-as via ?client_id. Grouped by zip: one row per zip with its reps.
+  let tQuery = supabase
+    .from('territories')
+    .select(
+      'zip, last_assigned_at, consultants(first_name, last_name, routing_paused, routing_weight), zipcodes(city, state)'
+    )
+  if (activeClientId) tQuery = tQuery.eq('client_id', activeClientId)
+  const { data: tRows } = await tQuery.order('zip')
+
+  const tMap = new Map<string, TerritoryZip>()
+  for (const r of (tRows ?? []) as unknown as TerritoryRow[]) {
+    let g = tMap.get(r.zip)
+    if (!g) {
+      g = { zip: r.zip, city: r.zipcodes?.city ?? null, state: r.zipcodes?.state ?? null, reps: [], lastAssigned: null }
+      tMap.set(r.zip, g)
+    }
+    if (r.consultants) {
+      g.reps.push({
+        name: `${r.consultants.first_name ?? ''} ${r.consultants.last_name ?? ''}`.trim() || '—',
+        sharePct: Math.round((r.consultants.routing_weight ?? 1) * 100),
+        paused: r.consultants.routing_paused ?? false,
+      })
+    }
+    if (r.last_assigned_at && (!g.lastAssigned || r.last_assigned_at > g.lastAssigned)) {
+      g.lastAssigned = r.last_assigned_at
+    }
+  }
+  const territories = Array.from(tMap.values())
+
   return (
-    <ConsultantsClient
+    <ConsultantsTabs
       consultants={consultants}
       role={portalUser.role}
       activeClientId={activeClientId}
       formUrl={formUrl}
+      territories={territories}
     />
   )
 }
