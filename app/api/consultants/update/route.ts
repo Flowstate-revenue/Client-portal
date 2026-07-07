@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
 // In-portal consultant edit: verify session -> authorized RPC write (RLS/
-// has_client_access enforced inside the function) -> fire the GHL Territories
-// reconcile via Make. No service_role anywhere in the request path.
+// has_client_access enforced inside the function). The RPC updates zip_codes,
+// which fires a DB trigger that syncs the territories table — routing reads
+// that directly, so there's no GHL/Make call in this path. Supabase is the
+// source of truth; any future GHL mirror is a separate Supabase-side job.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -53,29 +55,7 @@ export async function POST(request: Request) {
     removed_zips?: string[]
   }
 
-  // GHL Territories reconcile via Make. Non-fatal: on failure the row stays
-  // ghl_sync_status = 'pending' and can be retried.
-  const webhook = process.env.CONSULTANT_SYNC_WEBHOOK
-  const secret = process.env.CONSULTANT_SYNC_SECRET
-  let synced = false
-  if (webhook) {
-    try {
-      const res = await fetch(webhook, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // x-flowstate-secret: our own check (scenario filter / body).
-          // x-make-apikey: Make's built-in webhook gate, if you enable it.
-          ...(secret ? { 'x-flowstate-secret': secret, 'x-make-apikey': secret } : {}),
-        },
-        // secret sent in header AND body so Make can verify with either
-        body: JSON.stringify({ action: 'update', secret, consultant_id: body.id, ...result }),
-      })
-      synced = res.ok
-    } catch {
-      synced = false
-    }
-  }
-
-  return NextResponse.json({ ok: true, synced, ...result })
+  // Territories are synced in-database by the consultants trigger, so the edit
+  // is live the moment the RPC returns.
+  return NextResponse.json({ ok: true, synced: true, ...result })
 }
