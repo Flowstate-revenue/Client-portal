@@ -12,6 +12,8 @@ export interface Consultant {
   ghlLocationId: string | null
   ghlSyncStatus: GHLSyncStatus
   active: boolean
+  routingPaused: boolean
+  routingWeight: number
   createdAt: string
 }
 

@@ -3,12 +3,12 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { Consultant } from '@/types/consultant'
 import ZipTag from '@/components/ui/ZipTag'
-import StatusBadge from '@/components/ui/StatusBadge'
 
 interface ConsultantTableProps {
   consultants: Consultant[]
   onEdit: (consultant: Consultant) => void
   onDelete: (consultant: Consultant) => void
+  onAvailabilityChange: (c: Consultant, paused: boolean, weight: number) => void
 }
 
 const TH = 'text-xs font-medium uppercase tracking-wider px-6 py-3'
@@ -37,6 +37,7 @@ export default function ConsultantTable({
   consultants,
   onEdit,
   onDelete,
+  onAvailabilityChange,
 }: ConsultantTableProps) {
   return (
     <div
@@ -58,8 +59,8 @@ export default function ConsultantTable({
             <th className={`${TH} text-left`} style={thStyle}>
               Territory
             </th>
-            <th className={`${TH} text-center w-24`} style={thStyle}>
-              Sync
+            <th className={`${TH} text-center w-40`} style={thStyle}>
+              Availability
             </th>
             <th className={`${TH} text-right w-20`} style={thStyle}>
               Actions
@@ -114,9 +115,9 @@ export default function ConsultantTable({
                   <TerritoryCell zipCodes={c.zipCodes} />
                 </td>
 
-                {/* Sync */}
-                <td className="px-6 py-3.5 text-center">
-                  <StatusBadge status={c.ghlSyncStatus} />
+                {/* Availability */}
+                <td className="px-6 py-3.5">
+                  <AvailabilityCell c={c} onChange={onAvailabilityChange} />
                 </td>
 
                 {/* Actions */}
@@ -141,6 +142,50 @@ export default function ConsultantTable({
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function AvailabilityCell({
+  c,
+  onChange,
+}: {
+  c: Consultant
+  onChange: (c: Consultant, paused: boolean, weight: number) => void
+}) {
+  const presets = [1, 0.75, 0.5, 0.25]
+  const weights = presets.includes(c.routingWeight) ? presets : [c.routingWeight, ...presets]
+  const active = !c.routingPaused
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={active}
+        onClick={() => onChange(c, !c.routingPaused, c.routingWeight)}
+        title={active ? 'Routing on — click to pause' : 'Paused — click to resume'}
+        className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-150 cursor-pointer"
+        style={{ backgroundColor: active ? 'var(--primary)' : 'var(--border)' }}
+      >
+        <span
+          className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform duration-150"
+          style={{ transform: active ? 'translateX(18px)' : 'translateX(3px)', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
+        />
+      </button>
+      <select
+        value={String(c.routingWeight)}
+        onChange={(e) => onChange(c, c.routingPaused, Number(e.target.value))}
+        disabled={c.routingPaused}
+        title="Share of leads routed to this rep"
+        className="text-xs rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+      >
+        {weights.map((w) => (
+          <option key={w} value={w}>
+            {Math.round(w * 100)}%
+          </option>
+        ))}
+      </select>
     </div>
   )
 }

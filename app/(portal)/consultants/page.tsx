@@ -15,6 +15,8 @@ type Row = {
   spanish_speaker: boolean
   ghl_sync_status: string
   active: boolean
+  routing_paused: boolean
+  routing_weight: number
   created_at: string
 }
 
@@ -34,6 +36,8 @@ function mapRow(r: Row): Consultant {
     ghlLocationId: r.ghl_location_id,
     ghlSyncStatus: status,
     active: r.active,
+    routingPaused: r.routing_paused ?? false,
+    routingWeight: r.routing_weight ?? 1,
     createdAt: r.created_at,
   }
 }
@@ -78,7 +82,7 @@ export default async function ConsultantsPage({
   let query = supabase
     .from('consultants')
     .select(
-      'id, ghl_user_id, ghl_location_id, first_name, last_name, email, phone, zip_codes, spanish_speaker, ghl_sync_status, active, created_at'
+      'id, ghl_user_id, ghl_location_id, first_name, last_name, email, phone, zip_codes, spanish_speaker, ghl_sync_status, active, routing_paused, routing_weight, created_at'
     )
     .eq('active', true)
   if (activeClientId) query = query.eq('client_id', activeClientId)
