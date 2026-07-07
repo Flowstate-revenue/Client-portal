@@ -8,7 +8,6 @@ interface ConsultantTableProps {
   consultants: Consultant[]
   onEdit: (consultant: Consultant) => void
   onDelete: (consultant: Consultant) => void
-  onAvailabilityChange: (c: Consultant, paused: boolean, weight: number) => void
 }
 
 const TH = 'text-xs font-medium uppercase tracking-wider px-6 py-3'
@@ -37,7 +36,6 @@ export default function ConsultantTable({
   consultants,
   onEdit,
   onDelete,
-  onAvailabilityChange,
 }: ConsultantTableProps) {
   return (
     <div
@@ -116,8 +114,8 @@ export default function ConsultantTable({
                 </td>
 
                 {/* Availability */}
-                <td className="px-6 py-3.5">
-                  <AvailabilityCell c={c} onChange={onAvailabilityChange} />
+                <td className="px-6 py-3.5 text-center">
+                  <AvailabilityCell c={c} />
                 </td>
 
                 {/* Actions */}
@@ -146,47 +144,25 @@ export default function ConsultantTable({
   )
 }
 
-function AvailabilityCell({
-  c,
-  onChange,
-}: {
-  c: Consultant
-  onChange: (c: Consultant, paused: boolean, weight: number) => void
-}) {
-  const presets = [1, 0.75, 0.5, 0.25]
-  const weights = presets.includes(c.routingWeight) ? presets : [c.routingWeight, ...presets]
-  const active = !c.routingPaused
+function AvailabilityCell({ c }: { c: Consultant }) {
+  if (c.routingPaused) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+        style={{
+          backgroundColor: 'rgba(239,68,68,0.12)',
+          color: '#ef4444',
+          border: '1px solid rgba(239,68,68,0.25)',
+        }}
+      >
+        Paused
+      </span>
+    )
+  }
   return (
-    <div className="flex items-center justify-center gap-2">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={active}
-        onClick={() => onChange(c, !c.routingPaused, c.routingWeight)}
-        title={active ? 'Routing on — click to pause' : 'Paused — click to resume'}
-        className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-150 cursor-pointer"
-        style={{ backgroundColor: active ? 'var(--primary)' : 'var(--border)' }}
-      >
-        <span
-          className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform duration-150"
-          style={{ transform: active ? 'translateX(18px)' : 'translateX(3px)', boxShadow: '0 1px 2px rgba(0,0,0,0.25)' }}
-        />
-      </button>
-      <select
-        value={String(c.routingWeight)}
-        onChange={(e) => onChange(c, c.routingPaused, Number(e.target.value))}
-        disabled={c.routingPaused}
-        title="Share of leads routed to this rep"
-        className="text-xs rounded-md px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
-      >
-        {weights.map((w) => (
-          <option key={w} value={w}>
-            {Math.round(w * 100)}%
-          </option>
-        ))}
-      </select>
-    </div>
+    <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+      {Math.round(c.routingWeight * 100)}%
+    </span>
   )
 }
 

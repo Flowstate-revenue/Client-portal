@@ -26,6 +26,8 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
   const [lastName, setLastName] = useState(consultant.lastName)
   const [phone, setPhone] = useState(consultant.phone)
   const [active, setActive] = useState(consultant.active)
+  const [routingPaused, setRoutingPaused] = useState(consultant.routingPaused)
+  const [routingWeight, setRoutingWeight] = useState(consultant.routingWeight)
   const [zipText, setZipText] = useState(consultant.zipCodes.join('\n'))
   const [loading, setLoading] = useState(false)
 
@@ -51,6 +53,8 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
           last_name: lastName.trim(),
           phone: phone.trim(),
           active,
+          routing_paused: routingPaused,
+          routing_weight: routingWeight,
           zip_codes: zipCodes,
         }),
       })
@@ -63,6 +67,8 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
         lastName: lastName.trim(),
         phone: phone.trim(),
         active,
+        routingPaused,
+        routingWeight,
         zipCodes: (json.zip_codes as string[]) ?? zipCodes,
         ghlSyncStatus: json.synced ? 'synced' : 'pending',
       })
@@ -76,6 +82,11 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
       setLoading(false)
     }
   }
+
+  const SHARE_PRESETS = [1, 0.75, 0.5, 0.25]
+  const shareOptions = SHARE_PRESETS.includes(routingWeight)
+    ? SHARE_PRESETS
+    : [routingWeight, ...SHARE_PRESETS]
 
   return (
     <Modal onClose={onClose}>
@@ -163,6 +174,53 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
             />
           </button>
         </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
+              Pause routing
+            </span>
+            <p className="text-xs" style={{ color: 'var(--subtle)' }}>
+              Holiday or leave — stops new leads without removing the rep.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={routingPaused}
+            disabled={loading}
+            onClick={() => setRoutingPaused((v) => !v)}
+            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 cursor-pointer disabled:opacity-50"
+            style={{ backgroundColor: routingPaused ? 'var(--destructive)' : 'var(--border)' }}
+          >
+            <span
+              className="inline-block h-4 w-4 rounded-full bg-white transition-transform duration-150"
+              style={{
+                transform: routingPaused ? 'translateX(22px)' : 'translateX(4px)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              }}
+            />
+          </button>
+        </div>
+
+        <Field label="Lead share">
+          <select
+            className={inputClass}
+            style={{ ...inputStyle, opacity: routingPaused ? 0.5 : 1 }}
+            value={String(routingWeight)}
+            onChange={(e) => setRoutingWeight(Number(e.target.value))}
+            disabled={loading || routingPaused}
+          >
+            {shareOptions.map((w) => (
+              <option key={w} value={w}>
+                {Math.round(w * 100)}%
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs" style={{ color: 'var(--subtle)' }}>
+            Part-time share vs. other reps on the same zip. A sole rep on a zip always gets 100%.
+          </p>
+        </Field>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>

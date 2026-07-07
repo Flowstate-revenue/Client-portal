@@ -77,24 +77,6 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
     }
   }
 
-  async function saveAvailability(c: Consultant, paused: boolean, weight: number) {
-    const prev = list
-    setList((cur) =>
-      cur.map((x) => (x.id === c.id ? { ...x, routingPaused: paused, routingWeight: weight } : x))
-    )
-    try {
-      const res = await fetch('/api/consultants/availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: c.id, paused, weight }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-    } catch {
-      toast.error('Could not update availability — reverting.')
-      setList(prev)
-    }
-  }
-
   const q = query.trim().toLowerCase()
   const filtered = q
     ? list.filter(
@@ -175,12 +157,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
           No consultants match your search.
         </div>
       ) : (
-        <ConsultantTable
-          consultants={filtered}
-          onEdit={setEditing}
-          onDelete={setDeleting}
-          onAvailabilityChange={saveAvailability}
-        />
+        <ConsultantTable consultants={filtered} onEdit={setEditing} onDelete={setDeleting} />
       )}
 
       {editing && (

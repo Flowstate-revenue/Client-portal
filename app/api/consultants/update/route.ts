@@ -19,6 +19,8 @@ export async function POST(request: Request) {
     last_name?: string
     phone?: string
     active?: boolean
+    routing_paused?: boolean
+    routing_weight?: number
     zip_codes?: string[]
   }
   try {
@@ -36,6 +38,8 @@ export async function POST(request: Request) {
     p_last_name: body.last_name ?? '',
     p_phone: body.phone ?? '',
     p_active: body.active ?? true,
+    p_routing_paused: body.routing_paused ?? false,
+    p_routing_weight: body.routing_weight ?? 1,
     p_zip_codes: body.zip_codes ?? [],
   })
   if (error) {
