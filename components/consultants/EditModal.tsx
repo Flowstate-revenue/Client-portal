@@ -36,10 +36,25 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
       toast.error('First and last name are required.')
       return
     }
-    const zipCodes = zipText
+    const raw = zipText
       .split(/[\s,;]+/)
       .map((z) => z.trim())
       .filter(Boolean)
+    const normalized: string[] = []
+    const invalid: string[] = []
+    for (const z of raw) {
+      // accept a 5-digit zip or a ZIP+4 (with or without hyphen), keep the base 5
+      const m = z.match(/^(\d{5})(?:-?\d{4})?$/)
+      if (m) normalized.push(m[1])
+      else invalid.push(z)
+    }
+    if (invalid.length > 0) {
+      toast.error(
+        `Not a valid zip: ${invalid.slice(0, 5).join(', ')}${invalid.length > 5 ? '…' : ''}`
+      )
+      return
+    }
+    const zipCodes = Array.from(new Set(normalized))
 
     setLoading(true)
     try {
