@@ -44,7 +44,12 @@ export default function ConsultantsTabs({
           formUrl={formUrl}
         />
       ) : (
-        <TerritoriesView territories={territories} role={role} activeClientId={activeClientId} />
+        <TerritoriesView
+          territories={territories}
+          role={role}
+          activeClientId={activeClientId}
+          consultants={consultants}
+        />
       )}
     </div>
   )

@@ -25,6 +25,7 @@ type TerritoryRow = {
   zip: string
   last_assigned_at: string | null
   consultants: {
+    id: string
     first_name: string | null
     last_name: string | null
     routing_paused: boolean
@@ -127,7 +128,7 @@ export default async function ConsultantsPage({
   let tQuery = supabase
     .from('territories')
     .select(
-      'zip, last_assigned_at, consultants(first_name, last_name, routing_paused, routing_weight), zipcodes(city, state)'
+      'zip, last_assigned_at, consultants(id, first_name, last_name, routing_paused, routing_weight), zipcodes(city, state)'
     )
   if (activeClientId) tQuery = tQuery.eq('client_id', activeClientId)
   const { data: tRows } = await tQuery.order('zip')
@@ -141,6 +142,7 @@ export default async function ConsultantsPage({
     }
     if (r.consultants) {
       g.reps.push({
+        consultantId: r.consultants.id,
         name: `${r.consultants.first_name ?? ''} ${r.consultants.last_name ?? ''}`.trim() || '—',
         sharePct: Math.round((r.consultants.routing_weight ?? 1) * 100),
         paused: r.consultants.routing_paused ?? false,

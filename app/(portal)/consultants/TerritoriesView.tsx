@@ -1,19 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import type { TerritoryZip } from '@/types/territory'
+import type { Consultant } from '@/types/consultant'
+import EditModal from '@/components/consultants/EditModal'
 
 interface Props {
   territories: TerritoryZip[]
   role: string
   activeClientId: string | null
+  consultants: Consultant[]
 }
 
 const TH = 'text-xs font-medium uppercase tracking-wider px-6 py-3'
 const thStyle: React.CSSProperties = { color: 'var(--subtle)' }
 
-export default function TerritoriesView({ territories, role, activeClientId }: Props) {
+export default function TerritoriesView({ territories, role, activeClientId, consultants }: Props) {
+  const router = useRouter()
+  const byId = useMemo(() => new Map(consultants.map((c) => [c.id, c])), [consultants])
+  const [editing, setEditing] = useState<Consultant | null>(null)
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
   const filtered = q
@@ -108,13 +115,25 @@ export default function TerritoriesView({ territories, role, activeClientId }: P
                     <td className="px-6 py-3.5">
                       <div className="flex flex-wrap gap-1.5">
                         {t.reps.map((r, i) => (
-                          <span
+                          <button
                             key={i}
-                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+                            type="button"
+                            title={`Edit ${r.name}`}
+                            onClick={() => {
+                              const c = byId.get(r.consultantId)
+                              if (c) setEditing(c)
+                            }}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs cursor-pointer transition-colors duration-150"
                             style={{
                               backgroundColor: 'var(--popover)',
                               border: '1px solid var(--border)',
                               color: r.paused ? 'var(--subtle)' : 'var(--foreground)',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--primary)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border)'
                             }}
                           >
                             <span style={{ textDecoration: r.paused ? 'line-through' : 'none' }}>{r.name}</span>
@@ -125,7 +144,7 @@ export default function TerritoriesView({ territories, role, activeClientId }: P
                                 <span style={{ color: 'var(--muted-foreground)' }}>· {r.sharePct}%</span>
                               )
                             )}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </td>
@@ -153,6 +172,17 @@ export default function TerritoriesView({ territories, role, activeClientId }: P
             </tbody>
           </table>
         </div>
+      )}
+
+      {editing && (
+        <EditModal
+          consultant={editing}
+          onSaved={() => {
+            setEditing(null)
+            router.refresh()
+          }}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   )

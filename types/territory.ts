@@ -1,4 +1,5 @@
 export interface TerritoryRep {
+  consultantId: string
   name: string
   sharePct: number
   paused: boolean
