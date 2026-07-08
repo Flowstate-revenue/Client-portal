@@ -10,6 +10,7 @@ import DeleteModal from '@/components/consultants/DeleteModal'
 import EditModal from '@/components/consultants/EditModal'
 import AddConsultantModal from '@/components/consultants/AddConsultantModal'
 import RecentlyDeletedModal from '@/components/consultants/RecentlyDeletedModal'
+import ReassignModal from '@/components/consultants/ReassignModal'
 import Button from '@/components/ui/Button'
 
 interface Props {
@@ -26,6 +27,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
   const [editing, setEditing] = useState<Consultant | null>(null)
   const [adding, setAdding] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
+  const [reassignTarget, setReassignTarget] = useState<DeletedConsultant | null>(null)
   const [query, setQuery] = useState('')
 
   const uncoveredCount = deletedReps.reduce((n, r) => n + r.uncoveredZips.length, 0)
@@ -63,14 +65,32 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
       const json = (await res.json()) as { uncovered_zips?: string[] }
       const uncovered = json.uncovered_zips ?? []
       const name = `${c.firstName} ${c.lastName}`.trim()
+
       if (uncovered.length > 0) {
         toast.warning(
           `Removed ${name}. ${uncovered.length} zip${uncovered.length > 1 ? 's' : ''} now uncovered: ` +
-            `${uncovered.slice(0, 6).join(', ')}${uncovered.length > 6 ? '…' : ''} — reassign under Recently deleted.`
+            `${uncovered.slice(0, 6).join(', ')}${uncovered.length > 6 ? '…' : ''}.`
         )
       } else {
         toast.success(`Removed ${name}. Their zip codes are still covered by other reps.`)
       }
+
+      // If the rep was provisioned, they may hold open opportunities — surface the
+      // reassignment step immediately instead of burying it in Recently deleted.
+      if (c.ghlUserId) {
+        setReassignTarget({
+          id: c.id,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          email: c.email,
+          deletedAt: new Date().toISOString(),
+          leadsReassignedAt: null,
+          hasGhlUser: true,
+          zipCodes: c.zipCodes,
+          uncoveredZips: uncovered,
+        })
+      }
+
       // refresh so the Recently deleted list + territories reflect the change
       router.refresh()
     } catch {
@@ -214,6 +234,15 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
           reps={deletedReps}
           heirs={list}
           onClose={() => setShowDeleted(false)}
+        />
+      )}
+
+      {reassignTarget && (
+        <ReassignModal
+          rep={reassignTarget}
+          heirs={list}
+          onDone={() => router.refresh()}
+          onClose={() => setReassignTarget(null)}
         />
       )}
     </div>

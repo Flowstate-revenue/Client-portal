@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Shuffle, UserCheck } from 'lucide-react'
+import { Loader2, Shuffle, UserCheck, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -76,6 +76,28 @@ export default function ReassignModal({ rep, heirs, onDone, onClose }: ReassignM
           subtitle="Every open lead goes to a single rep you choose."
         />
       </div>
+
+      {mode === 'round_robin' && rep.uncoveredZips.length > 0 && (
+        <div
+          className="rounded-md p-2.5 mb-5 text-xs"
+          style={{
+            backgroundColor: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.3)',
+            color: '#FCD34D',
+          }}
+        >
+          <p className="flex items-center gap-1.5 font-medium mb-1">
+            <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+            {rep.uncoveredZips.length} of their zip{rep.uncoveredZips.length > 1 ? 's have' : ' has'} no
+            active rep
+          </p>
+          <p style={{ color: 'var(--muted-foreground)' }}>
+            Leads in {rep.uncoveredZips.length > 1 ? 'those zips' : 'that zip'} can&apos;t be
+            round-robined — they&apos;ll stay flagged in Recently deleted until you add a rep or send
+            them to one below.
+          </p>
+        </div>
+      )}
 
       {mode === 'heir' && (
         <div className="mb-5">
