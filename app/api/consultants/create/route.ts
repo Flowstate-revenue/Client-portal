@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: key }, { status })
   }
 
-  const result = (data ?? {}) as { id?: string; ghl_location_id?: string }
+  const result = (data ?? {}) as { id?: string; ghl_location_id?: string; company_name?: string }
 
   // Provision in GHL via Make (non-fatal — the row exists; provisioning can retry)
   const webhook = process.env.CONSULTANT_PROVISION_WEBHOOK
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
           consultant_id: result.id,
           client_id: body.client_id,
           ghl_location_id: result.ghl_location_id,
+          company_name: result.company_name,
           first_name: body.first_name,
           last_name: body.last_name,
           email: body.email,
