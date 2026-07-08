@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Consultant } from '@/types/consultant'
+import type { Consultant, DeletedConsultant } from '@/types/consultant'
 import type { TerritoryZip } from '@/types/territory'
 import ConsultantsClient from './ConsultantsClient'
 import TerritoriesView from './TerritoriesView'
@@ -11,6 +11,7 @@ interface Props {
   role: string
   activeClientId: string | null
   territories: TerritoryZip[]
+  deletedReps: DeletedConsultant[]
 }
 
 export default function ConsultantsTabs({
@@ -18,6 +19,7 @@ export default function ConsultantsTabs({
   role,
   activeClientId,
   territories,
+  deletedReps,
 }: Props) {
   const [tab, setTab] = useState<'reps' | 'territories'>('reps')
 
@@ -35,7 +37,12 @@ export default function ConsultantsTabs({
       </div>
 
       {tab === 'reps' ? (
-        <ConsultantsClient consultants={consultants} role={role} activeClientId={activeClientId} />
+        <ConsultantsClient
+          consultants={consultants}
+          role={role}
+          activeClientId={activeClientId}
+          deletedReps={deletedReps}
+        />
       ) : (
         <TerritoriesView
           territories={territories}

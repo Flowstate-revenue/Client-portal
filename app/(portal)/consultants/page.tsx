@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import ConsultantsTabs from './ConsultantsTabs'
-import type { Consultant, GHLSyncStatus } from '@/types/consultant'
+import type { Consultant, DeletedConsultant, GHLSyncStatus } from '@/types/consultant'
 import type { TerritoryZip } from '@/types/territory'
 
 type Row = {
@@ -137,12 +137,41 @@ export default async function ConsultantsPage({
   }
   const territories = Array.from(tMap.values())
 
+  // Soft-deleted reps (kept for coverage review). A zip they held is "uncovered"
+  // when no territory row for it remains — i.e. no active rep picked it up.
+  const coveredSet = new Set(territories.map((t) => t.zip))
+  let dQuery = supabase
+    .from('consultants')
+    .select('id, first_name, last_name, email, zip_codes, deleted_at, leads_reassigned_at, ghl_user_id')
+    .eq('active', false)
+    .not('deleted_at', 'is', null)
+  if (activeClientId) dQuery = dQuery.eq('client_id', activeClientId)
+  const { data: dRows } = await dQuery
+    .order('deleted_at', { ascending: false })
+    .limit(25)
+
+  const deletedReps: DeletedConsultant[] = (dRows ?? []).map((r) => {
+    const zips = ((r.zip_codes as string[] | null) ?? []).filter(Boolean)
+    return {
+      id: r.id as string,
+      firstName: (r.first_name as string | null) ?? '',
+      lastName: (r.last_name as string | null) ?? '',
+      email: r.email as string,
+      deletedAt: (r.deleted_at as string | null) ?? null,
+      leadsReassignedAt: (r.leads_reassigned_at as string | null) ?? null,
+      hasGhlUser: Boolean(r.ghl_user_id),
+      zipCodes: zips,
+      uncoveredZips: zips.filter((z) => !coveredSet.has(z)),
+    }
+  })
+
   return (
     <ConsultantsTabs
       consultants={consultants}
       role={portalUser.role}
       activeClientId={activeClientId}
       territories={territories}
+      deletedReps={deletedReps}
     />
   )
 }

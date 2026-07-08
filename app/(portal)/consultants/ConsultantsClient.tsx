@@ -2,28 +2,33 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Consultant } from '@/types/consultant'
+import type { Consultant, DeletedConsultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
 import DeleteModal from '@/components/consultants/DeleteModal'
 import EditModal from '@/components/consultants/EditModal'
 import AddConsultantModal from '@/components/consultants/AddConsultantModal'
+import RecentlyDeletedModal from '@/components/consultants/RecentlyDeletedModal'
 import Button from '@/components/ui/Button'
 
 interface Props {
   consultants: Consultant[]
   role: string
   activeClientId: string | null
+  deletedReps: DeletedConsultant[]
 }
 
-export default function ConsultantsClient({ consultants, role, activeClientId }: Props) {
+export default function ConsultantsClient({ consultants, role, activeClientId, deletedReps }: Props) {
   const router = useRouter()
   const [list, setList] = useState<Consultant[]>(consultants)
   const [deleting, setDeleting] = useState<Consultant | null>(null)
   const [editing, setEditing] = useState<Consultant | null>(null)
   const [adding, setAdding] = useState(false)
+  const [showDeleted, setShowDeleted] = useState(false)
   const [query, setQuery] = useState('')
+
+  const uncoveredCount = deletedReps.reduce((n, r) => n + r.uncoveredZips.length, 0)
 
   // re-sync when the server re-renders with fresh data
   // (React-recommended "reset state on prop change" pattern — not an effect)
@@ -52,18 +57,24 @@ export default function ConsultantsClient({ consultants, role, activeClientId }:
       const res = await fetch('/api/consultants/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: c.id,
-          ghlUserId: c.ghlUserId,
-          ghlLocationId: c.ghlLocationId,
-        }),
+        body: JSON.stringify({ id: c.id }),
       })
       if (!res.ok) throw new Error(await res.text())
-      toast.success(
-        `Removal triggered for ${c.firstName} ${c.lastName}. GHL will reassign their leads.`
-      )
+      const json = (await res.json()) as { uncovered_zips?: string[] }
+      const uncovered = json.uncovered_zips ?? []
+      const name = `${c.firstName} ${c.lastName}`.trim()
+      if (uncovered.length > 0) {
+        toast.warning(
+          `Removed ${name}. ${uncovered.length} zip${uncovered.length > 1 ? 's' : ''} now uncovered: ` +
+            `${uncovered.slice(0, 6).join(', ')}${uncovered.length > 6 ? '…' : ''} — reassign under Recently deleted.`
+        )
+      } else {
+        toast.success(`Removed ${name}. Their zip codes are still covered by other reps.`)
+      }
+      // refresh so the Recently deleted list + territories reflect the change
+      router.refresh()
     } catch {
-      toast.error('Could not trigger the removal — restoring the row.')
+      toast.error('Could not remove — restoring the row.')
       setList((prev) => [c, ...prev])
     }
   }
@@ -111,6 +122,26 @@ export default function ConsultantsClient({ consultants, role, activeClientId }:
               style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
             />
           </div>
+          {deletedReps.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowDeleted(true)}
+              className="relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer"
+              style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+              title="View recently deleted reps and coverage gaps"
+            >
+              <Trash2 size={15} />
+              Recently deleted
+              {uncoveredCount > 0 && (
+                <span
+                  className="ml-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: 'rgba(245,158,11,0.18)', color: '#FCD34D' }}
+                >
+                  {uncoveredCount}
+                </span>
+              )}
+            </button>
+          )}
           <Button
             type="button"
             variant="primary"
@@ -175,6 +206,14 @@ export default function ConsultantsClient({ consultants, role, activeClientId }:
           consultant={deleting}
           onConfirm={confirmDelete}
           onClose={() => setDeleting(null)}
+        />
+      )}
+
+      {showDeleted && (
+        <RecentlyDeletedModal
+          reps={deletedReps}
+          heirs={list}
+          onClose={() => setShowDeleted(false)}
         />
       )}
     </div>

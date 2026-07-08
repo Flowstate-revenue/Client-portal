@@ -73,7 +73,7 @@ export default function AddConsultantModal({ clientId, onAdded, onClose }: AddCo
             : json.error ?? 'Could not add the consultant.'
         throw new Error(msg)
       }
-      toast.success('Consultant added — provisioning in GHL. They go live once set up.')
+      toast.success('Consultant added — syncing now, they’ll go live in a few seconds.')
       onAdded()
       onClose()
     } catch (err) {
@@ -102,7 +102,7 @@ export default function AddConsultantModal({ clientId, onAdded, onClose }: AddCo
         <Field label="Email">
           <input className={inputClass} style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} placeholder="rep@company.com" />
           <p className="mt-1 text-xs" style={{ color: 'var(--subtle)' }}>
-            Used as the login identity and the GHL contact/user email.
+            Used as the consultant’s sign-in identity.
           </p>
         </Field>
 

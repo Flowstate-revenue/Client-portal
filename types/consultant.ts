@@ -17,6 +17,18 @@ export interface Consultant {
   createdAt: string
 }
 
+export interface DeletedConsultant {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  deletedAt: string | null
+  leadsReassignedAt: string | null
+  hasGhlUser: boolean
+  zipCodes: string[]
+  uncoveredZips: string[]
+}
+
 export interface ConsultantFormData {
   firstName: string
   lastName: string
