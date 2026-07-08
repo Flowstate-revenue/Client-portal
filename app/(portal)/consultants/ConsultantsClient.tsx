@@ -8,20 +8,21 @@ import type { Consultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
 import DeleteModal from '@/components/consultants/DeleteModal'
 import EditModal from '@/components/consultants/EditModal'
+import AddConsultantModal from '@/components/consultants/AddConsultantModal'
 import Button from '@/components/ui/Button'
 
 interface Props {
   consultants: Consultant[]
   role: string
   activeClientId: string | null
-  formUrl: string | null
 }
 
-export default function ConsultantsClient({ consultants, role, activeClientId, formUrl }: Props) {
+export default function ConsultantsClient({ consultants, role, activeClientId }: Props) {
   const router = useRouter()
   const [list, setList] = useState<Consultant[]>(consultants)
   const [deleting, setDeleting] = useState<Consultant | null>(null)
   const [editing, setEditing] = useState<Consultant | null>(null)
+  const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState('')
 
   // re-sync when the server re-renders with fresh data
@@ -32,7 +33,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
     setList(consultants)
   }
 
-  // pull fresh data when the user returns from the GHL form
+  // pull fresh data when the tab regains focus (e.g. after GHL provisioning)
   useEffect(() => {
     function onFocus() {
       router.refresh()
@@ -40,16 +41,6 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [router])
-
-  function openForm() {
-    if (!formUrl) {
-      toast.error('No consultant form is configured for this client yet.')
-      return
-    }
-    // Add only — a blank consultant form needs no prefilled params.
-    window.open(formUrl, '_blank', 'noopener,noreferrer')
-    toast.info('New consultant form opened.')
-  }
 
   async function confirmDelete() {
     if (!deleting) return
@@ -123,8 +114,9 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
           <Button
             type="button"
             variant="primary"
-            onClick={() => openForm()}
-            title={formUrl ? 'Add a consultant' : 'No consultant form configured yet'}
+            onClick={() => setAdding(true)}
+            disabled={!activeClientId}
+            title={activeClientId ? 'Add a consultant' : 'Select a client first'}
           >
             <Plus size={16} />
             Add Consultant
@@ -167,6 +159,14 @@ export default function ConsultantsClient({ consultants, role, activeClientId, f
             setList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
           }
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {adding && activeClientId && (
+        <AddConsultantModal
+          clientId={activeClientId}
+          onAdded={() => router.refresh()}
+          onClose={() => setAdding(false)}
         />
       )}
 

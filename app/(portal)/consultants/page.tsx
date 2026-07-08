@@ -104,23 +104,6 @@ export default async function ConsultantsPage({
   const { data: rows, error } = await query.order('created_at', { ascending: false })
   if (error) console.error('consultants query failed:', error)
 
-  // Compose the GHL form URL from the stored form ID + domain. Default is
-  // Flowstate's shared links.flowstaterevenue.com (each sub-account serves its
-  // own form from it); a client's own branded_domain overrides it once set.
-  // Falls back to a global env default when no client is selected.
-  let formUrl: string | null = process.env.NEXT_PUBLIC_GHL_CONSULTANT_FORM_URL ?? null
-  if (activeClientId) {
-    const { data: c } = await supabase
-      .from('clients')
-      .select('consultant_form_id, branded_domain')
-      .eq('id', activeClientId)
-      .maybeSingle()
-    if (c?.consultant_form_id) {
-      const domain = c.branded_domain || 'links.flowstaterevenue.com'
-      formUrl = `https://${domain}/widget/form/${c.consultant_form_id}`
-    }
-  }
-
   const consultants = (rows ?? []).map((r) => mapRow(r as Row))
 
   // Territory coverage (read-only view). RLS scopes to the client; admins can
@@ -159,7 +142,6 @@ export default async function ConsultantsPage({
       consultants={consultants}
       role={portalUser.role}
       activeClientId={activeClientId}
-      formUrl={formUrl}
       territories={territories}
     />
   )

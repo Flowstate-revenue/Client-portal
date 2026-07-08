@@ -10,7 +10,6 @@ interface Props {
   consultants: Consultant[]
   role: string
   activeClientId: string | null
-  formUrl: string | null
   territories: TerritoryZip[]
 }
 
@@ -18,7 +17,6 @@ export default function ConsultantsTabs({
   consultants,
   role,
   activeClientId,
-  formUrl,
   territories,
 }: Props) {
   const [tab, setTab] = useState<'reps' | 'territories'>('reps')
@@ -37,12 +35,7 @@ export default function ConsultantsTabs({
       </div>
 
       {tab === 'reps' ? (
-        <ConsultantsClient
-          consultants={consultants}
-          role={role}
-          activeClientId={activeClientId}
-          formUrl={formUrl}
-        />
+        <ConsultantsClient consultants={consultants} role={role} activeClientId={activeClientId} />
       ) : (
         <TerritoriesView
           territories={territories}
