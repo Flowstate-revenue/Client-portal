@@ -85,6 +85,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
           email: c.email,
           deletedAt: new Date().toISOString(),
           leadsReassignedAt: null,
+          ghlAccessRevokedAt: null,
           hasGhlUser: true,
           zipCodes: c.zipCodes,
           uncoveredZips: uncovered,

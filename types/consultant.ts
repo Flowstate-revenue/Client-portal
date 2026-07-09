@@ -24,6 +24,7 @@ export interface DeletedConsultant {
   email: string
   deletedAt: string | null
   leadsReassignedAt: string | null
+  ghlAccessRevokedAt: string | null
   hasGhlUser: boolean
   zipCodes: string[]
   uncoveredZips: string[]

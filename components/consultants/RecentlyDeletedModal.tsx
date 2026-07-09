@@ -131,6 +131,26 @@ export default function RecentlyDeletedModal({ reps, heirs, onClose }: RecentlyD
                   </button>
                 )}
               </div>
+
+              {/* Access status — access is pulled automatically once reassignment finishes */}
+              {rep.hasGhlUser && (
+                <div className="mt-2 text-xs">
+                  {rep.ghlAccessRevokedAt ? (
+                    <span className="flex items-center gap-1.5" style={{ color: 'var(--muted-foreground)' }}>
+                      <CheckCircle2 size={13} style={{ color: '#34D399' }} />
+                      Access removed {formatDate(rep.ghlAccessRevokedAt)}
+                    </span>
+                  ) : rep.leadsReassignedAt ? (
+                    <span style={{ color: 'var(--subtle)' }}>
+                      Access is removed automatically once reassignment finishes.
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--subtle)' }}>
+                      Access stays until their leads are reassigned.
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
