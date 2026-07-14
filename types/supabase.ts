@@ -26,6 +26,38 @@ export interface BillableEvent {
   } | null
 }
 
+// One row per client from the public.portal_kpi_summary view. Count/bigint
+// columns come back from PostgREST as numeric strings — always coerce with
+// Number(x) || 0 at the call site (same convention as BillableEvent.unit_price
+// below).
+export interface PortalKpiSummary {
+  client_id: string
+  company_name: string
+  billing_status: string | null
+  sits_total: number
+  sits_last_7d: number
+  sits_last_30d: number
+  sits_value_total: number
+  proposal_followups_total: number
+  reactivations_total: number
+  referrals_total: number
+  reviews_total: number
+  total_events: number
+  total_billable_value: number
+  first_event_at: string | null
+  last_event_at: string | null
+}
+
+// One row per (client, week, outcome_type) from the
+// public.portal_kpi_weekly_trend(p_weeks) RPC.
+export interface PortalKpiWeeklyTrendRow {
+  client_id: string
+  week_start: string
+  outcome_type: 'sit' | 'proposal_followup' | 'reactivation' | 'referral' | 'review' | string
+  event_count: number
+  event_value: number
+}
+
 export interface PortalUser {
   id: string
   auth_user_id: string | null

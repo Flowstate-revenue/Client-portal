@@ -145,8 +145,26 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
     }
   }
 
-  const handleManageBilling = () => {
-    toast.info('Stripe billing portal coming soon.')
+  const handleManageBilling = async () => {
+    try {
+      const res = await fetch('/api/billing/portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: activeClientId }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.url) {
+        toast.error(
+          json.error === 'no_stripe_customer'
+            ? 'No billing account on file yet.'
+            : 'Could not open billing portal. Try again shortly.'
+        )
+        return
+      }
+      window.location.href = json.url
+    } catch {
+      toast.error('Could not reach billing. Check your connection and try again.')
+    }
   }
 
   // Format currency
