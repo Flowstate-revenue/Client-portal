@@ -8,6 +8,26 @@ export interface Client {
   deposit_sits_remaining: number | null
 }
 
+// Full profile shape for the My Account page -- a superset of Client
+// (above) which stays intentionally narrow for the places that only need
+// a company name + billing basics (e.g. the admin view-as dropdown).
+export interface ClientProfile {
+  id: string
+  company_name: string
+  primary_contact_name: string | null
+  primary_contact_email: string | null
+  billing_email: string | null
+  phone: string | null
+  website: string | null
+  address_line1: string | null
+  address_line2: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+  country: string | null
+  stripe_customer_id: string | null
+}
+
 export interface BillableEvent {
   id: string
   client_id: string | null

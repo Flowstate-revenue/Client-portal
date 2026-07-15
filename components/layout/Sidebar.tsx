@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, Receipt, Users, X } from 'lucide-react'
+import { BarChart2, Receipt, Users, UserCog, X } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: BarChart2, href: '/dashboard' },
   { label: 'Billing', icon: Receipt, href: '/billing' },
   { label: 'Consultants', icon: Users, href: '/consultants' },
+  { label: 'My Account', icon: UserCog, href: '/my-account' },
 ] as const
 
 interface SidebarProps {
