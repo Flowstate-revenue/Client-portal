@@ -1,15 +1,18 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar, CreditCard } from 'lucide-react'
+import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar, CreditCard, Power, PowerOff } from 'lucide-react'
 import { toast } from 'sonner'
 import type { BillableEvent } from '@/types/supabase'
-import { PRODUCT_LABELS as OUTCOME_LABELS, PRODUCT_BADGES as OUTCOME_COLORS } from '@/lib/products'
+import { PRODUCT_LIST, PRODUCT_LABELS as OUTCOME_LABELS, PRODUCT_BADGES as OUTCOME_COLORS } from '@/lib/products'
 
 interface BillingClientProps {
   initialEvents: BillableEvent[]
   role: string
   activeClientId: string | null
+  // Real Stripe-backed product status, written by the stripe-subscription-sync
+  // webhook and read fresh by the server component on every page load.
+  activeProducts: { product_key: string; status: string }[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -30,13 +33,27 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
-export default function BillingClient({ initialEvents, role, activeClientId }: BillingClientProps) {
+export default function BillingClient({ initialEvents, role, activeClientId, activeProducts }: BillingClientProps) {
   const [viewMode, setViewMode] = useState<'current' | 'previous'>('current') // 'current' = open items, 'previous' = previous month paid items
   const [searchQuery, setSearchQuery] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Seeded from activeProducts (real data from Stripe via
+  // stripe-subscription-sync, fetched fresh by page.tsx on every load) --
+  // NOT a client-side guess anymore. setCancelledProducts is still used
+  // for the optimistic update right after a successful cancel click, so
+  // the UI reflects it instantly instead of waiting on a page refresh +
+  // webhook round-trip.
+  const [cancelledProducts, setCancelledProducts] = useState<Set<string>>(
+    () => new Set(activeProducts.filter((p) => p.status === 'cancelled').map((p) => p.product_key))
+  )
+  // Tracks whichever product currently has a Turn On / Turn Off request
+  // in flight, so we can disable just that one button (shared between
+  // handleCancelProduct and handleReactivateProduct).
+  const [pendingProductKey, setPendingProductKey] = useState<string | null>(null)
 
   // Calculate previous calendar month date boundaries
   const prevMonthBounds = useMemo(() => {
@@ -167,6 +184,76 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
     }
   }
 
+  // Turns OFF one product -- removes it from the client's weekly-billing
+  // subscription via stripe-cancel-product. Doesn't touch the other
+  // products or cancel the whole account -- that's a deliberately
+  // separate, bigger action (not built here; contact-us for now).
+  const handleCancelProduct = async (productKey: string) => {
+    if (!activeClientId) return
+    const label = OUTCOME_LABELS[productKey] || productKey
+    const confirmed = window.confirm(
+      `Turn off "${label}"? This removes it from your weekly invoice going forward. You can turn it back on any time.`
+    )
+    if (!confirmed) return
+
+    setPendingProductKey(productKey)
+    try {
+      const res = await fetch('/api/billing/cancel-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: activeClientId, product_key: productKey }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) {
+        if (json.error === 'last_product_use_full_cancel') {
+          toast.error('This is your last active product. To stop all billing, contact us to cancel your account.')
+        } else {
+          toast.error('Could not turn that product off. Try again shortly.')
+        }
+        return
+      }
+      setCancelledProducts((prev) => new Set(prev).add(productKey))
+      toast.success(`${label} turned off -- removed from your weekly billing.`)
+    } catch {
+      toast.error('Could not reach billing. Check your connection and try again.')
+    } finally {
+      setPendingProductKey(null)
+    }
+  }
+
+  // Turns ON one product -- adds it back to the client's weekly-billing
+  // subscription via stripe-reactivate-product. Under the hood this
+  // creates a brand-new subscription item (Stripe can't "undo" a deleted
+  // one), but from the client's side it's just flipping a switch back on.
+  const handleReactivateProduct = async (productKey: string) => {
+    if (!activeClientId) return
+    const label = OUTCOME_LABELS[productKey] || productKey
+
+    setPendingProductKey(productKey)
+    try {
+      const res = await fetch('/api/billing/reactivate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: activeClientId, product_key: productKey }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) {
+        toast.error('Could not turn that product on. Try again shortly.')
+        return
+      }
+      setCancelledProducts((prev) => {
+        const next = new Set(prev)
+        next.delete(productKey)
+        return next
+      })
+      toast.success(`${label} is back on -- included in your next weekly invoice.`)
+    } catch {
+      toast.error('Could not reach billing. Check your connection and try again.')
+    } finally {
+      setPendingProductKey(null)
+    }
+  }
+
   // Format currency
   const formatUSD = (val: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -242,6 +329,63 @@ export default function BillingClient({ initialEvents, role, activeClientId }: B
           )}
         </div>
       </div>
+
+      {/* Active outcome products -- one weekly subscription, 5 line items.
+          Lets a client opt out of individual products without cancelling
+          their whole account. Status shown here comes from activeProducts
+          (real Stripe state, synced via webhook) on load, then updates
+          optimistically the moment a cancel succeeds. */}
+      {activeClientId && (
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Your Outcome Subscriptions
+            </span>
+            <span className="text-xs text-muted-foreground">
+              One weekly invoice covers all active products below.
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {PRODUCT_LIST.map((product) => {
+              const isCancelled = cancelledProducts.has(product.key)
+              const isPending = pendingProductKey === product.key
+              return (
+                <div
+                  key={product.key}
+                  className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 ${
+                    isCancelled ? 'border-border bg-muted/30' : 'border-border bg-background'
+                  }`}
+                >
+                  <span
+                    className={`text-sm font-medium ${isCancelled ? 'text-muted-foreground' : 'text-foreground'}`}
+                  >
+                    {product.labelPlural}
+                  </span>
+                  {isCancelled ? (
+                    <button
+                      onClick={() => handleReactivateProduct(product.key)}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      <Power size={13} />
+                      {isPending ? 'Turning on…' : 'Turn On'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleCancelProduct(product.key)}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      <PowerOff size={13} />
+                      {isPending ? 'Turning off…' : 'Turn Off'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Summary metrics strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

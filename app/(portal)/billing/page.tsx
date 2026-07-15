@@ -79,11 +79,27 @@ export default async function BillingPage({
     console.error('Supabase query failed:', error)
   }
 
+  const resolvedClientId = client_id || portalUser.client_id || null
+
+  // client_products reflects real Stripe subscription state -- written by
+  // the stripe-subscription-sync webhook, never by the portal itself. We
+  // just read it here and hand it down so BillingClient can show accurate
+  // active/cancelled status on page load instead of guessing.
+  let activeProducts: { product_key: string; status: string }[] = []
+  if (resolvedClientId) {
+    const { data: productRows } = await supabase
+      .from('client_products')
+      .select('product_key, status')
+      .eq('client_id', resolvedClientId)
+    activeProducts = productRows || []
+  }
+
   return (
     <BillingClient
       initialEvents={(events as unknown as BillableEvent[]) || []}
       role={portalUser.role}
-      activeClientId={client_id || portalUser.client_id || null}
+      activeClientId={resolvedClientId}
+      activeProducts={activeProducts}
     />
   )
 }
