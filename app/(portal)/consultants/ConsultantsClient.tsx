@@ -116,7 +116,7 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-            Solar Consultants
+            Your Consultants
           </h1>
           <span
             className="rounded-full px-2.5 py-0.5 text-sm"
