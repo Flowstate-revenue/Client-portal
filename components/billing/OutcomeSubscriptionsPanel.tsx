@@ -100,8 +100,8 @@ export default function OutcomeSubscriptionsPanel({
   }
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-5">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Your Outcome Subscriptions
         </span>
@@ -109,46 +109,51 @@ export default function OutcomeSubscriptionsPanel({
           One weekly invoice covers all active products below.
         </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* Two-up, not five-across -- each card gets room for a real
+          description of what the product does, not just a label. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {PRODUCT_LIST.map((product) => {
           const isCancelled = cancelledProducts.has(product.key)
           const isPending = pendingProductKey === product.key
           return (
             <div
               key={product.key}
-              className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 ${
+              className={`rounded-xl border p-5 ${
                 isCancelled ? 'border-border bg-muted/30' : 'border-border bg-background'
               }`}
             >
-              <span className={`text-sm font-medium ${isCancelled ? 'text-muted-foreground' : 'text-foreground'}`}>
-                {product.labelPlural}
-              </span>
-              {isCancelled ? (
-                // Off = red, and says exactly what clicking it does. We
-                // don't expect anyone to land here often (no billing, no
-                // problem) but when they do, the fix should be obvious.
-                <button
-                  onClick={() => handleReactivateProduct(product.key)}
-                  disabled={isPending}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-500 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  <PowerOff size={13} />
-                  {isPending ? 'Turning on…' : 'Turn Back On'}
-                </button>
-              ) : (
-                // On = green, reads as a status ("On") rather than an
-                // invitation to turn it off. Clicking still opens the
-                // confirm dialog in handleCancelProduct -- the route to
-                // turn it off exists, it's just not the loud option.
-                <button
-                  onClick={() => handleCancelProduct(product.key)}
-                  disabled={isPending}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-500 hover:bg-emerald-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  <Power size={13} />
-                  {isPending ? 'Turning off…' : 'On'}
-                </button>
-              )}
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className={`text-base font-semibold ${isCancelled ? 'text-muted-foreground' : 'text-foreground'}`}>
+                  {product.labelPlural}
+                </h3>
+                {isCancelled ? (
+                  // Off = red, and says exactly what clicking it does. We
+                  // don't expect anyone to land here often (no billing, no
+                  // problem) but when they do, the fix should be obvious.
+                  <button
+                    onClick={() => handleReactivateProduct(product.key)}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-500 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+                  >
+                    <PowerOff size={13} />
+                    {isPending ? 'Turning on…' : 'Turn Back On'}
+                  </button>
+                ) : (
+                  // On = green, reads as a status ("On") rather than an
+                  // invitation to turn it off. Clicking still opens the
+                  // confirm dialog in handleCancelProduct -- the route to
+                  // turn it off exists, it's just not the loud option.
+                  <button
+                    onClick={() => handleCancelProduct(product.key)}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-500 hover:bg-emerald-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+                  >
+                    <Power size={13} />
+                    {isPending ? 'Turning off…' : 'On'}
+                  </button>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
           )
         })}

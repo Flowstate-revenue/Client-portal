@@ -109,7 +109,11 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
   const labelClass = 'text-xs font-semibold text-muted-foreground mb-1 block'
 
   return (
-    <div className="space-y-6">
+    // max-w-4xl keeps the form from stretching edge-to-edge on wide
+    // monitors -- long input boxes were making the page feel crowded
+    // rather than a neat overview. pb-16 gives real breathing room below
+    // the last card instead of the page ending abruptly.
+    <div className="max-w-4xl space-y-10 pb-16">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">My Account</h1>
@@ -119,7 +123,7 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
       </div>
 
       {/* Profile section */}
-      <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-5">
+      <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-6">
         <div className="flex items-center gap-2">
           <User size={16} className="text-primary" />
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -127,7 +131,7 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className={labelClass}>Company Name</label>
             <input className={inputClass} value={form.company_name} onChange={handleChange('company_name')} />
@@ -176,7 +180,7 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="sm:col-span-2">
             <label className={labelClass}>Address Line 1</label>
             <input className={inputClass} value={form.address_line1} onChange={handleChange('address_line1')} />
@@ -216,7 +220,7 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
       </div>
 
       {/* Billing section */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-foreground">Billing</h2>
