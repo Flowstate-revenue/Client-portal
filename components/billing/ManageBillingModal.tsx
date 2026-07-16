@@ -53,9 +53,7 @@ export default function ManageBillingModal({ activeClientId, activeProducts, onC
           </p>
         </div>
 
-        <OutcomeSubscriptionsPanel activeClientId={activeClientId} activeProducts={activeProducts} />
-
-        <div className="flex justify-end pt-1">
+        <div className="flex justify-end">
           <button
             onClick={handleManageBilling}
             className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md whitespace-nowrap"
@@ -64,6 +62,8 @@ export default function ManageBillingModal({ activeClientId, activeProducts, onC
             <span>Payment Method & Invoices</span>
           </button>
         </div>
+
+        <OutcomeSubscriptionsPanel activeClientId={activeClientId} activeProducts={activeProducts} />
       </div>
     </Modal>
   )
