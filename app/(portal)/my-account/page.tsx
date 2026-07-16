@@ -61,17 +61,7 @@ export default async function MyAccountPage({
     )
   }
 
-  // client_products reflects real Stripe subscription state -- written by
-  // stripe-subscription-sync, never by the portal. Just read fresh here.
-  const { data: productRows } = await supabase
-    .from('client_products')
-    .select('product_key, status')
-    .eq('client_id', resolvedClientId)
-
-  return (
-    <MyAccountClient
-      client={client as ClientProfile}
-      activeProducts={productRows || []}
-    />
-  )
+  // Billing (client_products, Manage Billing modal) lives on the Billing
+  // page now -- this page no longer needs that data.
+  return <MyAccountClient client={client as ClientProfile} />
 }

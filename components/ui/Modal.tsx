@@ -6,9 +6,13 @@ import { X } from 'lucide-react'
 interface ModalProps {
   onClose: () => void
   children: React.ReactNode
+  // Optional override for wider content (e.g. the billing modal's 2-up
+  // product cards). Defaults to the original max-w-lg so every existing
+  // caller (consultant modals, etc.) is unaffected.
+  maxWidthClassName?: string
 }
 
-export default function Modal({ onClose, children }: ModalProps) {
+export default function Modal({ onClose, children, maxWidthClassName = 'max-w-lg' }: ModalProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -24,7 +28,7 @@ export default function Modal({ onClose, children }: ModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg mx-4 rounded-xl p-6"
+        className={`relative w-full ${maxWidthClassName} mx-4 rounded-xl p-6 max-h-[85vh] overflow-y-auto`}
         style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { CreditCard, Save, User, MapPin } from 'lucide-react'
+import { Save, User, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ClientProfile } from '@/types/supabase'
-import OutcomeSubscriptionsPanel from '@/components/billing/OutcomeSubscriptionsPanel'
 
+// Billing (Manage Billing modal, outcome Turn On/Off) lives on the
+// Billing page now, not here -- this page is purely company/address
+// profile editing. See components/billing/ManageBillingModal.tsx.
 interface MyAccountClientProps {
   client: ClientProfile
-  activeProducts: { product_key: string; status: string }[]
 }
 
 // Editable profile fields. Kept as one flat object so a single onChange
@@ -45,7 +46,7 @@ function toForm(client: ClientProfile): ProfileForm {
   }
 }
 
-export default function MyAccountClient({ client, activeProducts }: MyAccountClientProps) {
+export default function MyAccountClient({ client }: MyAccountClientProps) {
   const [form, setForm] = useState<ProfileForm>(() => toForm(client))
   const [saving, setSaving] = useState(false)
 
@@ -75,32 +76,6 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
       toast.error('Could not reach the server. Check your connection and try again.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  // Opens Stripe's hosted Customer Portal -- card on file, invoices,
-  // receipts. Deliberately NOT rebuilt in-house: this is the one place
-  // actual card data changes hands, and Stripe's hosted flow keeps that
-  // PCI scope off our servers entirely.
-  const handleManageBilling = async () => {
-    try {
-      const res = await fetch('/api/billing/portal-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: client.id }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.url) {
-        toast.error(
-          json.error === 'no_stripe_customer'
-            ? 'No billing account on file yet.'
-            : 'Could not open billing portal. Try again shortly.'
-        )
-        return
-      }
-      window.location.href = json.url
-    } catch {
-      toast.error('Could not reach billing. Check your connection and try again.')
     }
   }
 
@@ -217,27 +192,6 @@ export default function MyAccountClient({ client, activeProducts }: MyAccountCli
             <span>{saving ? 'Saving…' : 'Save Changes'}</span>
           </button>
         </div>
-      </div>
-
-      {/* Billing section */}
-      <div className="space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-foreground">Billing</h2>
-            <p className="text-sm text-muted-foreground">
-              Manage your subscription and payment method.
-            </p>
-          </div>
-          <button
-            onClick={handleManageBilling}
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md whitespace-nowrap"
-          >
-            <CreditCard size={16} />
-            <span>Manage Payment Method & Invoices</span>
-          </button>
-        </div>
-
-        <OutcomeSubscriptionsPanel activeClientId={client.id} activeProducts={activeProducts} />
       </div>
     </div>
   )

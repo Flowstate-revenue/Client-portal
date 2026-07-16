@@ -1,18 +1,20 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar } from 'lucide-react'
+import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar, CreditCard } from 'lucide-react'
 import type { BillableEvent } from '@/types/supabase'
 import { PRODUCT_LABELS as OUTCOME_LABELS, PRODUCT_BADGES as OUTCOME_COLORS } from '@/lib/products'
+import ManageBillingModal from '@/components/billing/ManageBillingModal'
 
-// NOTE: this page is deliberately just the billable-events ledger now.
-// "Manage Billing" (Stripe hosted portal) and the outcome subscriptions
-// Turn On/Off panel used to live here -- both moved to /my-account, next
-// to the rest of a client's account/profile management. See
-// components/billing/OutcomeSubscriptionsPanel.tsx for that piece.
+// "Manage Billing" opens a modal here (product Turn On/Off + link to
+// Stripe's hosted portal) -- moved back from /my-account, which is now
+// purely profile/address. Billing management belongs next to the events
+// it bills for. See components/billing/ManageBillingModal.tsx.
 interface BillingClientProps {
   initialEvents: BillableEvent[]
   role: string
+  activeClientId: string | null
+  activeProducts: { product_key: string; status: string }[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,13 +35,14 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
-export default function BillingClient({ initialEvents, role }: BillingClientProps) {
+export default function BillingClient({ initialEvents, role, activeClientId, activeProducts }: BillingClientProps) {
   const [viewMode, setViewMode] = useState<'current' | 'previous'>('current') // 'current' = open items, 'previous' = previous month paid items
   const [searchQuery, setSearchQuery] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [billingModalOpen, setBillingModalOpen] = useState(false)
 
   // Calculate previous calendar month date boundaries
   const prevMonthBounds = useMemo(() => {
@@ -210,8 +213,29 @@ export default function BillingClient({ initialEvents, role }: BillingClientProp
               Previous Month
             </button>
           </div>
+
+          {/* Manage Billing CTA -- opens the product Turn On/Off +
+              payment method modal. Admins viewing "no client selected"
+              (all-clients view) don't get this, same as before. */}
+          {activeClientId && (
+            <button
+              onClick={() => setBillingModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md"
+            >
+              <CreditCard size={16} />
+              <span>Manage Billing</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {billingModalOpen && activeClientId && (
+        <ManageBillingModal
+          activeClientId={activeClientId}
+          activeProducts={activeProducts}
+          onClose={() => setBillingModalOpen(false)}
+        />
+      )}
 
       {/* Summary metrics strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
