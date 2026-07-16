@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { stripe } from '@/lib/stripe'
 
-// Portal -> stripe-cancel-product Edge Function. Lets a client (or an
-// admin viewing-as) remove ONE of their 5 outcome products from their
-// single weekly-billing subscription, without touching the other 4 or
-// cancelling the whole account. Auth/client_id resolution mirrors
-// portal-session/route.ts exactly -- see that file for more detail.
+// Lets a client (or an admin viewing-as) remove ONE of their 5 outcome
+// products from their single weekly-billing subscription, without
+// touching the other 4 or cancelling the whole account.
+//
+// Used to proxy to the stripe-cancel-product Edge Function -- moved to a
+// direct Stripe call here for the same reason as portal-session/route.ts
+// (cuts the Vercel->Supabase->Stripe chain down to Vercel->Stripe). The
+// resulting customer.subscription.updated webhook still fires and still
+// flows to stripe-subscription-sync exactly as before, since that's
+// driven by Stripe, not by which app called the API.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -35,25 +41,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 })
   }
 
-  const fnUrl = process.env.STRIPE_CANCEL_PRODUCT_FN_URL
-  const secret = process.env.BILLING_SHARED_SECRET
-  if (!fnUrl) return NextResponse.json({ error: 'billing_not_configured' }, { status: 500 })
+  // RLS (has_client_access) scopes this to a client the caller can see.
+  const { data: client } = await supabase
+    .from('clients')
+    .select('stripe_subscription_id')
+    .eq('id', clientId)
+    .maybeSingle()
+
+  if (!client?.stripe_subscription_id) {
+    return NextResponse.json({ error: 'no_subscription' }, { status: 404 })
+  }
 
   try {
-    const res = await fetch(fnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(secret ? { 'x-flowstate-secret': secret } : {}),
-      },
-      body: JSON.stringify({ client_id: clientId, product_key: productKey }),
+    const items = await stripe.subscriptionItems.list({
+      subscription: client.stripe_subscription_id,
+      limit: 100,
     })
-    const json = await res.json()
-    if (!res.ok || !json.ok) {
-      return NextResponse.json({ error: json.reason ?? 'stripe_error' }, { status: 502 })
+
+    const target = items.data.find((i) => i.metadata?.product_key === productKey)
+    if (!target) return NextResponse.json({ error: 'product_not_found' }, { status: 404 })
+
+    if (items.data.length <= 1) {
+      // Would leave the subscription with zero items, which Stripe
+      // rejects. Full cancellation is a different, deliberate action --
+      // not this one. Error string kept exact -- the frontend
+      // (OutcomeSubscriptionsPanel) matches on it specifically.
+      return NextResponse.json({ error: 'last_product_use_full_cancel' }, { status: 409 })
     }
+
+    await stripe.subscriptionItems.del(target.id, { proration_behavior: 'none' })
+
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: 'stripe_unreachable' }, { status: 502 })
+  } catch (err) {
+    console.error('cancel-product stripe call failed:', err)
+    return NextResponse.json({ error: 'stripe_error' }, { status: 502 })
   }
 }

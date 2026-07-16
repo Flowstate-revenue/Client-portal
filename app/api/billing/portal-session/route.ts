@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { stripe } from '@/lib/stripe'
 
-// Portal -> Stripe hosted Customer Portal. Verifies the session, resolves the
-// caller's client, and asks the stripe-portal-session Edge Function for a
-// hosted portal URL where they can see their active subscription, update
-// their card, and download invoices. No Stripe keys in this app.
+// Portal -> Stripe hosted Customer Portal.
+//
+// This used to proxy to a Supabase Edge Function (stripe-portal-session)
+// purely to keep STRIPE_SECRET_KEY out of Vercel. Bart's call: add the
+// secret to Vercel and call Stripe directly here instead -- cuts two
+// network hops (Vercel->Supabase, Supabase->Stripe) down to one
+// (Vercel->Stripe), which is what was making "Manage Billing" feel slow.
+// The Edge Function still exists in Supabase but is no longer called by
+// anything -- fine to leave it, nothing points at it anymore.
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -29,25 +35,28 @@ export async function POST(request: Request) {
   const clientId = pu.role === 'admin' ? bodyClientId : pu.client_id
   if (!clientId) return NextResponse.json({ error: 'no_client' }, { status: 400 })
 
-  const fnUrl = process.env.STRIPE_PORTAL_FN_URL
-  const secret = process.env.BILLING_SHARED_SECRET
-  if (!fnUrl) return NextResponse.json({ error: 'billing_not_configured' }, { status: 500 })
+  // RLS (has_client_access) already scopes this to a client the caller
+  // is allowed to see -- same policy that lets My Account/Billing load.
+  const { data: client } = await supabase
+    .from('clients')
+    .select('stripe_customer_id')
+    .eq('id', clientId)
+    .maybeSingle()
+
+  if (!client?.stripe_customer_id) {
+    return NextResponse.json({ error: 'no_stripe_customer' }, { status: 404 })
+  }
+
+  const siteUrl = process.env.SITE_URL ?? 'https://my.flowstaterevenue.com'
 
   try {
-    const res = await fetch(fnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(secret ? { 'x-flowstate-secret': secret } : {}),
-      },
-      body: JSON.stringify({ client_id: clientId }),
+    const session = await stripe.billingPortal.sessions.create({
+      customer: client.stripe_customer_id,
+      return_url: `${siteUrl}/billing`,
     })
-    const json = await res.json()
-    if (!res.ok || !json.url) {
-      return NextResponse.json({ error: json.reason ?? 'stripe_error' }, { status: 502 })
-    }
-    return NextResponse.json({ url: json.url })
-  } catch {
-    return NextResponse.json({ error: 'stripe_unreachable' }, { status: 502 })
+    return NextResponse.json({ url: session.url })
+  } catch (err) {
+    console.error('stripe.billingPortal.sessions.create failed:', err)
+    return NextResponse.json({ error: 'stripe_error' }, { status: 502 })
   }
 }
