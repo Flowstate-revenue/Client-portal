@@ -7,6 +7,11 @@ import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 
 interface AddManagerModalProps {
+  // Only actually used server-side when the caller is an admin viewing-as
+  // a client -- /api/team/invite-manager ignores this for a non-admin
+  // caller and resolves the client from their own session instead. Still
+  // always passed so the admin path works.
+  clientId: string
   onAdded: () => void
   onClose: () => void
 }
@@ -19,7 +24,7 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--foreground)',
 }
 
-export default function AddManagerModal({ onAdded, onClose }: AddManagerModalProps) {
+export default function AddManagerModal({ clientId, onAdded, onClose }: AddManagerModalProps) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -45,6 +50,7 @@ export default function AddManagerModal({ onAdded, onClose }: AddManagerModalPro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          client_id: clientId,
           email: email.trim().toLowerCase(),
           first_name: firstName.trim(),
           last_name: lastName.trim(),

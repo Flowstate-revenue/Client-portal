@@ -299,6 +299,7 @@ export default function MyAccountClient({
 
       {adding && (
         <AddManagerModal
+          clientId={client.id}
           onAdded={() => router.refresh()}
           onClose={() => setAdding(false)}
         />
