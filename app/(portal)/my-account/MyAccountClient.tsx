@@ -151,11 +151,13 @@ export default function MyAccountClient({
   const labelClass = 'text-xs font-semibold text-muted-foreground mb-1 block'
 
   return (
-    // max-w-4xl keeps the form from stretching edge-to-edge on wide
-    // monitors -- long input boxes were making the page feel crowded
-    // rather than a neat overview. pb-16 gives real breathing room below
-    // the last card instead of the page ending abruptly.
-    <div className="max-w-4xl space-y-10 pb-16">
+    // Cards go full width (Team's table needs the room, and it looks odd
+    // for one card to be narrower than the one below it). Input fields
+    // inside Company & Contact are capped separately below, so a "Company
+    // Name" box doesn't stretch edge-to-edge on wide monitors -- pb-16
+    // gives real breathing room below the last card instead of the page
+    // ending abruptly.
+    <div className="space-y-10 pb-16">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">My Account</h1>
@@ -173,7 +175,10 @@ export default function MyAccountClient({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {/* max-w-2xl keeps individual inputs at a normal, readable width --
+            without it, a "Company Name" box would stretch the full width
+            of the now-full-width card, which looks wrong. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
           <div>
             <label className={labelClass}>Company Name</label>
             <input className={inputClass} value={form.company_name} onChange={handleChange('company_name')} />
@@ -222,7 +227,7 @@ export default function MyAccountClient({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
           <div className="sm:col-span-2">
             <label className={labelClass}>Address Line 1</label>
             <input className={inputClass} value={form.address_line1} onChange={handleChange('address_line1')} />
