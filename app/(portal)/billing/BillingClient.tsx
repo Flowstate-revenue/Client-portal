@@ -15,6 +15,12 @@ interface BillingClientProps {
   role: string
   activeClientId: string | null
   activeProducts: { product_key: string; status: string }[]
+  // admin/client_owner always true; client_manager only if the owner
+  // granted the can_access_billing scope. Computed server-side in
+  // page.tsx -- gates the "Manage Billing" button only. The underlying
+  // billable events list (this whole page otherwise) stays visible to
+  // every manager regardless of this flag.
+  hasBillingAccess: boolean
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,7 +41,13 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
-export default function BillingClient({ initialEvents, role, activeClientId, activeProducts }: BillingClientProps) {
+export default function BillingClient({
+  initialEvents,
+  role,
+  activeClientId,
+  activeProducts,
+  hasBillingAccess,
+}: BillingClientProps) {
   const [viewMode, setViewMode] = useState<'current' | 'previous'>('current') // 'current' = open items, 'previous' = previous month paid items
   const [searchQuery, setSearchQuery] = useState('')
   const [outcomeFilter, setOutcomeFilter] = useState('all')
@@ -216,8 +228,11 @@ export default function BillingClient({ initialEvents, role, activeClientId, act
 
           {/* Manage Billing CTA -- opens the product Turn On/Off +
               payment method modal. Admins viewing "no client selected"
-              (all-clients view) don't get this, same as before. */}
-          {activeClientId && (
+              (all-clients view) don't get this, same as before. A
+              client_manager without the billing scope doesn't get the
+              button at all -- they can still see every event on this
+              page, just not touch payment method/products. */}
+          {activeClientId && hasBillingAccess && (
             <button
               onClick={() => setBillingModalOpen(true)}
               className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold px-4 py-2 rounded-lg text-sm transition-colors duration-150 cursor-pointer shadow-md"

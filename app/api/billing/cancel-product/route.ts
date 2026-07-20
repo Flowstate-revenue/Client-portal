@@ -21,10 +21,16 @@ export async function POST(request: Request) {
 
   const { data: pu } = await supabase
     .from('portal_users')
-    .select('client_id, role')
+    .select('client_id, role, can_access_billing')
     .eq('auth_user_id', user.id)
     .maybeSingle()
   if (!pu) return NextResponse.json({ error: 'no_profile' }, { status: 403 })
+
+  // admin and client_owner always have billing access; a client_manager
+  // only does if the owner granted the can_access_billing scope.
+  const hasBillingAccess =
+    pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.can_access_billing === true)
+  if (!hasBillingAccess) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   let body: { client_id?: string; product_key?: string }
   try {
@@ -33,8 +39,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
 
-  // client_owner can only ever act on their own client; an admin may pass
-  // a client_id to act on behalf of a client they're viewing.
+  // client_owner/client_manager can only ever act on their own client; an
+  // admin may pass a client_id to act on behalf of a client they're viewing.
   const clientId = pu.role === 'admin' ? body.client_id : pu.client_id
   const productKey = body.product_key
   if (!clientId || !productKey) {

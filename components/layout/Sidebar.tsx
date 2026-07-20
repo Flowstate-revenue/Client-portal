@@ -1,7 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { BarChart2, Receipt, Users, UserCog, X } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 
@@ -17,9 +18,46 @@ interface SidebarProps {
   onClose?: () => void
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+// Split out so useSearchParams() (which requires a Suspense boundary) only
+// wraps the part of the sidebar that needs it -- same pattern as
+// ClientDropdown in TopBar.tsx.
+function NavLinks({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
+  // Admin's "view as client" selection lives only in the ?client_id= URL
+  // param (see TopBar's ClientDropdown) -- carry it forward on every nav
+  // link so switching pages doesn't silently reset back to "All clients."
+  // No-op for non-admins, since they never have this param set.
+  const clientId = searchParams?.get('client_id')
+  const withClientId = (href: string) => (clientId ? `${href}?client_id=${clientId}` : href)
+
+  return (
+    <>
+      {NAV_ITEMS.map((item) => {
+        const isActive = pathname === item.href
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.href}
+            href={withClientId(item.href)}
+            onClick={onClose}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+              isActive
+                ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Icon size={18} />
+            <span>{item.label}</span>
+          </Link>
+        )
+      })}
+    </>
+  )
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const content = (
     <div className="flex flex-col h-full bg-card border-r border-border w-64">
       <div className="flex items-center px-6 h-14 border-b border-border">
@@ -28,25 +66,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                isActive
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
+        <Suspense fallback={null}>
+          <NavLinks onClose={onClose} />
+        </Suspense>
       </nav>
 
       {/* Footer */}

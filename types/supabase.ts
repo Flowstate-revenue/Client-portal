@@ -86,4 +86,23 @@ export interface PortalUser {
   client_id: string | null
   full_name: string | null
   phone: string | null
+  // client_manager only -- meaningless for admin/client_owner (always
+  // full-access). See private.can_manage_managers/can_access_billing.
+  can_manage_managers?: boolean
+  can_access_billing?: boolean
+}
+
+// A row in the My Account "Team" list -- the owner + every client_manager
+// for a client. Narrower than PortalUser (no auth_user_id needed by most
+// callers) but keeps it for the "is this me?" comparison in the UI.
+export interface TeamMember {
+  id: string
+  auth_user_id: string | null
+  email: string
+  role: 'client_owner' | 'client_manager' | string
+  full_name: string | null
+  phone: string | null
+  can_manage_managers: boolean
+  can_access_billing: boolean
+  created_at: string
 }
