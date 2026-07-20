@@ -1,39 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
 
-// Toggles a manager's two scope flags (can_manage_managers,
-// can_access_billing). Authorization lives inside the set_manager_scope()
-// SQL function -- same shape as remove-manager.
-export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
-  let body: { portal_user_id?: string; can_manage_managers?: boolean; can_access_billing?: boolean }
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
-  }
-  if (!body.portal_user_id) return NextResponse.json({ error: 'missing_portal_user_id' }, { status: 400 })
-
-  const { error } = await supabase.rpc('set_manager_scope', {
-    p_target_id: body.portal_user_id,
-    p_can_manage_managers: body.can_manage_managers === true,
-    p_can_access_billing: body.can_access_billing === true,
-  })
-  if (error) {
-    const status = error.message.includes('not_authorized')
-      ? 403
-      : error.message.includes('not_a_manager')
-        ? 400
-        : error.message.includes('not_found')
-          ? 404
-          : 500
-    return NextResponse.json({ error: error.message }, { status })
-  }
-
-  return NextResponse.json({ ok: true })
+// DEPRECATED -- superseded by /api/team/update-manager, which now updates
+// name/phone alongside the single is_super_manager flag in one action
+// (the old two independent scopes this route toggled no longer exist as
+// columns; the set_manager_scope() RPC it called has been dropped).
+//
+// Nothing in the app calls this route anymore -- couldn't delete the file
+// itself (locked by the running dev server in the build sandbox), so it's
+// left here returning 410 rather than erroring against a dropped RPC.
+// Safe to delete this whole app/api/team/update-manager-scope/ directory.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'gone', message: 'Use /api/team/update-manager instead.' },
+    { status: 410 }
+  )
 }

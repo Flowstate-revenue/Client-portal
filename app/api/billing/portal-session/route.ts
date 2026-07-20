@@ -20,15 +20,15 @@ export async function POST(request: Request) {
 
   const { data: pu } = await supabase
     .from('portal_users')
-    .select('client_id, role, can_access_billing')
+    .select('client_id, role, is_super_manager')
     .eq('auth_user_id', user.id)
     .maybeSingle()
   if (!pu) return NextResponse.json({ error: 'no_profile' }, { status: 403 })
 
   // admin and client_owner always have billing access; a client_manager
-  // only does if the owner granted the can_access_billing scope.
+  // only does if they're a super manager.
   const hasBillingAccess =
-    pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.can_access_billing === true)
+    pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.is_super_manager === true)
   if (!hasBillingAccess) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   // client_owner/client_manager manage their own client; an admin may pass a client_id (view-as)

@@ -7,12 +7,14 @@ interface TeamTableProps {
   members: TeamMember[]
   currentAuthUserId: string | null
   // Whether the person VIEWING this table can manage OTHER people's rows
-  // (edit scopes, remove). True for admin, client_owner, and a
-  // client_manager whose own can_manage_managers flag is set. Editing
-  // one's OWN row (name/phone) is always allowed regardless of this.
-  canManageManagers: boolean
+  // (edit their details/permissions, remove). True for admin, client_owner,
+  // and a client_manager whose own is_super_manager flag is set. Editing
+  // one's OWN row (name/phone only) is always allowed regardless of this.
+  // The owner's row is never editable/removable by anyone but the owner,
+  // regardless of this flag.
+  canManageTeam: boolean
   onEditSelf: (member: TeamMember) => void
-  onEditScope: (member: TeamMember) => void
+  onEditManager: (member: TeamMember) => void
   onDelete: (member: TeamMember) => void
 }
 
@@ -43,38 +45,30 @@ function ScopeTags({ member }: { member: TeamMember }) {
       </span>
     )
   }
-  const tags: string[] = []
-  if (member.can_manage_managers) tags.push('Manages team')
-  if (member.can_access_billing) tags.push('Billing access')
-  if (tags.length === 0) {
+  if (member.is_super_manager) {
     return (
-      <span className="text-xs" style={{ color: 'var(--subtle)' }}>
-        Zips & consultants only
+      <span
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+        style={{ backgroundColor: 'var(--popover)', color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
+      >
+        <ShieldCheck size={11} />
+        Super Manager
       </span>
     )
   }
   return (
-    <div className="flex flex-wrap gap-1">
-      {tags.map((t) => (
-        <span
-          key={t}
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-          style={{ backgroundColor: 'var(--popover)', color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
-        >
-          <ShieldCheck size={11} />
-          {t}
-        </span>
-      ))}
-    </div>
+    <span className="text-xs" style={{ color: 'var(--subtle)' }}>
+      Consultants only
+    </span>
   )
 }
 
 export default function TeamTable({
   members,
   currentAuthUserId,
-  canManageManagers,
+  canManageTeam,
   onEditSelf,
-  onEditScope,
+  onEditManager,
   onDelete,
 }: TeamTableProps) {
   return (
@@ -95,7 +89,9 @@ export default function TeamTable({
             const isLast = idx === members.length - 1
             const isSelf = !!currentAuthUserId && m.auth_user_id === currentAuthUserId
             const isOwnerRow = m.role === 'client_owner'
-            const showScopeActions = !isSelf && !isOwnerRow && canManageManagers
+            // Owner's row is untouchable by anyone but the owner themselves
+            // (isSelf), regardless of canManageTeam.
+            const showManagerActions = !isSelf && !isOwnerRow && canManageTeam
 
             return (
               <tr
@@ -136,9 +132,9 @@ export default function TeamTable({
                     {isSelf && (
                       <ActionButton icon={Pencil} hoverColor="var(--primary)" onClick={() => onEditSelf(m)} title="Edit your details" />
                     )}
-                    {showScopeActions && (
+                    {showManagerActions && (
                       <>
-                        <ActionButton icon={ShieldCheck} hoverColor="var(--primary)" onClick={() => onEditScope(m)} title="Edit permissions" />
+                        <ActionButton icon={Pencil} hoverColor="var(--primary)" onClick={() => onEditManager(m)} title="Edit manager" />
                         <ActionButton icon={Trash2} hoverColor="var(--destructive)" onClick={() => onDelete(m)} title="Remove manager" />
                       </>
                     )}

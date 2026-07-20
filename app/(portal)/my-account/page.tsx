@@ -20,7 +20,7 @@ export default async function MyAccountPage({
 
   const { data: portalUser } = await supabase
     .from('portal_users')
-    .select('id, auth_user_id, email, role, client_id, full_name, phone, can_manage_managers')
+    .select('id, auth_user_id, email, role, client_id, full_name, phone, is_super_manager')
     .eq('auth_user_id', user.id)
     .maybeSingle()
   if (!portalUser) redirect('/login')
@@ -62,22 +62,22 @@ export default async function MyAccountPage({
   }
 
   // Team: owner row + every client_manager for this client. Everyone sees
-  // the full roster (read-only unless it's their own row, or they have
-  // can_manage_managers); the fine-grained edit/remove authorization is
+  // the full roster (read-only unless it's their own row, or they're the
+  // owner/a super manager); the fine-grained edit/remove authorization is
   // enforced again server-side in the /api/team/* routes regardless of
   // what this page renders.
   const { data: teamMembers } = await supabase
     .from('portal_users')
-    .select('id, auth_user_id, email, role, full_name, phone, can_manage_managers, can_access_billing, created_at')
+    .select('id, auth_user_id, email, role, full_name, phone, is_super_manager, created_at')
     .eq('client_id', resolvedClientId)
     .in('role', ['client_owner', 'client_manager'])
     .order('role', { ascending: true }) // 'client_manager' < 'client_owner' alphabetically -- re-sorted client-side
     .order('created_at', { ascending: true })
 
-  // admin can always manage; client_owner always can; a client_manager
-  // only can if their own row grants it.
-  const canManageManagers =
-    portalUser.role === 'admin' || portalUser.role === 'client_owner' || portalUser.can_manage_managers === true
+  // admin can always manage the team; client_owner always can; a
+  // client_manager only can if they're a super manager.
+  const canManageTeam =
+    portalUser.role === 'admin' || portalUser.role === 'client_owner' || portalUser.is_super_manager === true
 
   // Billing (client_products, Manage Billing modal) lives on the Billing
   // page now -- this page no longer needs that data.
@@ -86,7 +86,7 @@ export default async function MyAccountPage({
       client={client as ClientProfile}
       teamMembers={teamMembers ?? []}
       currentAuthUserId={user.id}
-      canManageManagers={canManageManagers}
+      canManageTeam={canManageTeam}
     />
   )
 }

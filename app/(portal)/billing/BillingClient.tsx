@@ -15,8 +15,8 @@ interface BillingClientProps {
   role: string
   activeClientId: string | null
   activeProducts: { product_key: string; status: string }[]
-  // admin/client_owner always true; client_manager only if the owner
-  // granted the can_access_billing scope. Computed server-side in
+  // admin/client_owner always true; client_manager only if they're a
+  // super manager. Computed server-side in
   // page.tsx -- gates the "Manage Billing" button only. The underlying
   // billable events list (this whole page otherwise) stays visible to
   // every manager regardless of this flag.

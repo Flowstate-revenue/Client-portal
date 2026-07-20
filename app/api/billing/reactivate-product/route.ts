@@ -19,15 +19,15 @@ export async function POST(request: Request) {
 
   const { data: pu } = await supabase
     .from('portal_users')
-    .select('client_id, role, can_access_billing')
+    .select('client_id, role, is_super_manager')
     .eq('auth_user_id', user.id)
     .maybeSingle()
   if (!pu) return NextResponse.json({ error: 'no_profile' }, { status: 403 })
 
   // admin and client_owner always have billing access; a client_manager
-  // only does if the owner granted the can_access_billing scope.
+  // only does if they're a super manager.
   const hasBillingAccess =
-    pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.can_access_billing === true)
+    pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.is_super_manager === true)
   if (!hasBillingAccess) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   let body: { client_id?: string; product_key?: string }
@@ -57,13 +57,12 @@ export async function POST(request: Request) {
     review: process.env.PRICE_ID_REVIEW ?? 'price_1TtACOHQFfAlfTssTAMLcZXj',
   }
 
-  let price: string | undefined
   const { data: priceRow } = await supabase
     .from('product_prices')
     .select('stripe_price_id')
     .eq('product_key', productKey)
     .maybeSingle()
-  price = priceRow?.stripe_price_id ?? EMERGENCY_FALLBACK_PRICE_IDS[productKey]
+  const price = priceRow?.stripe_price_id ?? EMERGENCY_FALLBACK_PRICE_IDS[productKey]
 
   if (!price) return NextResponse.json({ error: 'unknown_product' }, { status: 400 })
 

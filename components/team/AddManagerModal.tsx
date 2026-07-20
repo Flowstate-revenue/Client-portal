@@ -29,8 +29,7 @@ export default function AddManagerModal({ clientId, onAdded, onClose }: AddManag
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [canManageManagers, setCanManageManagers] = useState(false)
-  const [canAccessBilling, setCanAccessBilling] = useState(false)
+  const [isSuperManager, setIsSuperManager] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSave(e: React.FormEvent) {
@@ -55,8 +54,7 @@ export default function AddManagerModal({ clientId, onAdded, onClose }: AddManag
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone: phone.trim(),
-          can_manage_managers: canManageManagers,
-          can_access_billing: canAccessBilling,
+          is_super_manager: isSuperManager,
         }),
       })
       const json = await res.json()
@@ -103,19 +101,12 @@ export default function AddManagerModal({ clientId, onAdded, onClose }: AddManag
           <input className={inputClass} style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={loading} placeholder="+15551234567" />
         </Field>
 
-        <div className="space-y-3 pt-1">
+        <div className="pt-1">
           <ScopeToggle
-            label="Can manage other managers"
-            description="Add, remove, and edit permissions for other managers on this account."
-            checked={canManageManagers}
-            onChange={setCanManageManagers}
-            disabled={loading}
-          />
-          <ScopeToggle
-            label="Billing access"
-            description="View and manage payment method, and turn products on/off."
-            checked={canAccessBilling}
-            onChange={setCanAccessBilling}
+            label="Make this person a Super Manager"
+            description="Full access, same as you: add/edit/remove other managers, billing & subscriptions, and consultants. Off = consultants only."
+            checked={isSuperManager}
+            onChange={setIsSuperManager}
             disabled={loading}
           />
         </div>

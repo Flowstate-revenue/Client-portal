@@ -86,10 +86,10 @@ export interface PortalUser {
   client_id: string | null
   full_name: string | null
   phone: string | null
-  // client_manager only -- meaningless for admin/client_owner (always
-  // full-access). See private.can_manage_managers/can_access_billing.
-  can_manage_managers?: boolean
-  can_access_billing?: boolean
+  // client_manager only -- meaningless for admin/client_owner (already
+  // full-access). A super manager has everything client_owner has except
+  // removing the owner. See private.can_manage_team.
+  is_super_manager?: boolean
 }
 
 // A row in the My Account "Team" list -- the owner + every client_manager
@@ -102,7 +102,6 @@ export interface TeamMember {
   role: 'client_owner' | 'client_manager' | string
   full_name: string | null
   phone: string | null
-  can_manage_managers: boolean
-  can_access_billing: boolean
+  is_super_manager: boolean
   created_at: string
 }

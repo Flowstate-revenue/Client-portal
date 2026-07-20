@@ -4,7 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 // Invites a client_manager for the caller's own client. Authorization is
 // checked here, server-side, against the caller's OWN portal_users row --
 // client_owner and admin always qualify; a client_manager only qualifies
-// if their can_manage_managers flag is set. client_id is always resolved
+// if their is_super_manager flag is set (super managers have the same
+// team-management rights as the owner). client_id is always resolved
 // from the caller's session, never trusted from the request body, so a
 // manager can never invite someone into a different client.
 //
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
 
   const { data: pu } = await supabase
     .from('portal_users')
-    .select('client_id, role, can_manage_managers')
+    .select('client_id, role, is_super_manager')
     .eq('auth_user_id', user.id)
     .maybeSingle()
   if (!pu) return NextResponse.json({ error: 'no_profile' }, { status: 403 })
@@ -32,8 +33,7 @@ export async function POST(request: Request) {
     first_name?: string
     last_name?: string
     phone?: string
-    can_manage_managers?: boolean
-    can_access_billing?: boolean
+    is_super_manager?: boolean
   }
   try {
     body = await request.json()
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   const isAdmin = pu.role === 'admin'
   const isOwner = pu.role === 'client_owner'
-  const isAuthorizedManager = pu.role === 'client_manager' && pu.can_manage_managers === true
+  const isAuthorizedManager = pu.role === 'client_manager' && pu.is_super_manager === true
   if (!isAdmin && !isOwner && !isAuthorizedManager) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
@@ -69,8 +69,7 @@ export async function POST(request: Request) {
       first_name: body.first_name ?? '',
       last_name: body.last_name ?? '',
       phone: body.phone ?? '',
-      can_manage_managers: body.can_manage_managers === true,
-      can_access_billing: body.can_access_billing === true,
+      is_super_manager: body.is_super_manager === true,
     }),
   })
 

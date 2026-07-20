@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button'
 import TeamTable from '@/components/team/TeamTable'
 import AddManagerModal from '@/components/team/AddManagerModal'
 import EditSelfModal from '@/components/team/EditSelfModal'
-import EditScopeModal from '@/components/team/EditScopeModal'
+import EditManagerModal from '@/components/team/EditManagerModal'
 import RemoveManagerModal from '@/components/team/RemoveManagerModal'
 
 // Billing (Manage Billing modal, outcome Turn On/Off) lives on the
@@ -20,7 +20,7 @@ interface MyAccountClientProps {
   client: ClientProfile
   teamMembers: TeamMember[]
   currentAuthUserId: string
-  canManageManagers: boolean
+  canManageTeam: boolean
 }
 
 // Editable profile fields. Kept as one flat object so a single onChange
@@ -72,7 +72,7 @@ export default function MyAccountClient({
   client,
   teamMembers: initialTeamMembers,
   currentAuthUserId,
-  canManageManagers,
+  canManageTeam,
 }: MyAccountClientProps) {
   const router = useRouter()
   const [form, setForm] = useState<ProfileForm>(() => toForm(client))
@@ -81,7 +81,7 @@ export default function MyAccountClient({
   const [members, setMembers] = useState<TeamMember[]>(() => sortMembers(initialTeamMembers))
   const [adding, setAdding] = useState(false)
   const [editingSelf, setEditingSelf] = useState<TeamMember | null>(null)
-  const [editingScope, setEditingScope] = useState<TeamMember | null>(null)
+  const [editingManager, setEditingManager] = useState<TeamMember | null>(null)
   const [removing, setRemoving] = useState<TeamMember | null>(null)
 
   // Re-sync from the server after router.refresh() (used after a
@@ -268,9 +268,9 @@ export default function MyAccountClient({
 
       {/* Team section -- owner first, then managers. Every manager can add,
           edit, and delete zip codes and consultants (that's on the
-          Consultants page, unaffected by anything here); this section is
-          purely about who has portal access and their two optional
-          extra scopes. */}
+          Consultants page, unaffected by anything here). A Super Manager
+          has full access -- same as the owner except removing the owner --
+          a regular manager is consultants-only. */}
       <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export default function MyAccountClient({
               Team
             </span>
           </div>
-          {canManageManagers && (
+          {canManageTeam && (
             <Button variant="primary" onClick={() => setAdding(true)}>
               <UserPlus size={16} />
               <span>Add manager</span>
@@ -290,9 +290,9 @@ export default function MyAccountClient({
         <TeamTable
           members={members}
           currentAuthUserId={currentAuthUserId}
-          canManageManagers={canManageManagers}
+          canManageTeam={canManageTeam}
           onEditSelf={setEditingSelf}
-          onEditScope={setEditingScope}
+          onEditManager={setEditingManager}
           onDelete={setRemoving}
         />
       </div>
@@ -311,11 +311,11 @@ export default function MyAccountClient({
           onClose={() => setEditingSelf(null)}
         />
       )}
-      {editingScope && (
-        <EditScopeModal
-          member={editingScope}
+      {editingManager && (
+        <EditManagerModal
+          member={editingManager}
           onSaved={(updated) => setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))}
-          onClose={() => setEditingScope(null)}
+          onClose={() => setEditingManager(null)}
         />
       )}
       {removing && (

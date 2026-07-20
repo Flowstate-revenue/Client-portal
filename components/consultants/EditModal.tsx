@@ -161,14 +161,14 @@ export default function EditModal({ consultant, onSaved, onClose }: EditModalPro
             placeholder={'21012\n21032\n21122'}
           />
           <p className="mt-1 text-xs" style={{ color: 'var(--subtle)' }}>
-            One per line or comma-separated — we clean it up automatically.
+            One per line or comma-separated — we clean it up automatically. Use this <a href="https://www.unitedstateszipcodes.org/zip-code-radius-map.php" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">website</a> to create a list of zipcodes with map view.
           </p>
         </Field>
 
         <div className="flex items-center justify-between">
           <div className="pr-4">
             <span className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-              Receiving leads
+              Active
             </span>
             <p className="text-xs" style={{ color: 'var(--subtle)' }}>
               On by default. Turn off to pause this rep for holiday or leave — they stay on the team and keep their zips.

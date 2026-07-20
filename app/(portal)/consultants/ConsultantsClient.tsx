@@ -6,11 +6,10 @@ import { Plus, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Consultant, DeletedConsultant } from '@/types/consultant'
 import ConsultantTable from '@/components/consultants/ConsultantTable'
-import DeleteModal from '@/components/consultants/DeleteModal'
+import DeleteModal, { type DeleteResult } from '@/components/consultants/DeleteModal'
 import EditModal from '@/components/consultants/EditModal'
 import AddConsultantModal from '@/components/consultants/AddConsultantModal'
 import RecentlyDeletedModal from '@/components/consultants/RecentlyDeletedModal'
-import ReassignModal from '@/components/consultants/ReassignModal'
 import Button from '@/components/ui/Button'
 
 interface Props {
@@ -27,7 +26,6 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
   const [editing, setEditing] = useState<Consultant | null>(null)
   const [adding, setAdding] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
-  const [reassignTarget, setReassignTarget] = useState<DeletedConsultant | null>(null)
   const [query, setQuery] = useState('')
 
   const uncoveredCount = deletedReps.reduce((n, r) => n + r.uncoveredZips.length, 0)
@@ -49,55 +47,29 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
     return () => window.removeEventListener('focus', onFocus)
   }, [router])
 
-  async function confirmDelete() {
-    if (!deleting) return
-    const c = deleting
-    setDeleting(null)
-    // optimistic removal; focus-refresh reconciles with the server
-    setList((prev) => prev.filter((x) => x.id !== c.id))
-    try {
-      const res = await fetch('/api/consultants/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: c.id }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const json = (await res.json()) as { uncovered_zips?: string[] }
-      const uncovered = json.uncovered_zips ?? []
-      const name = `${c.firstName} ${c.lastName}`.trim()
+  // DeleteModal already pulled the coverage/lead preview, let the manager decide
+  // what to do with the gaps, and performed the delete (+ any reassignment) by
+  // the time this fires — this just reconciles local state and reports back.
+  function handleDeleted(result: DeleteResult) {
+    setList((prev) => prev.filter((x) => x.id !== result.id))
 
-      if (uncovered.length > 0) {
-        toast.warning(
-          `Removed ${name}. ${uncovered.length} zip${uncovered.length > 1 ? 's' : ''} now uncovered: ` +
-            `${uncovered.slice(0, 6).join(', ')}${uncovered.length > 6 ? '…' : ''}.`
-        )
-      } else {
-        toast.success(`Removed ${name}. Their zip codes are still covered by other reps.`)
-      }
-
-      // If the rep was provisioned, they may hold open opportunities — surface the
-      // reassignment step immediately instead of burying it in Recently deleted.
-      if (c.ghlUserId) {
-        setReassignTarget({
-          id: c.id,
-          firstName: c.firstName,
-          lastName: c.lastName,
-          email: c.email,
-          deletedAt: new Date().toISOString(),
-          leadsReassignedAt: null,
-          ghlAccessRevokedAt: null,
-          hasGhlUser: true,
-          zipCodes: c.zipCodes,
-          uncoveredZips: uncovered,
-        })
-      }
-
-      // refresh so the Recently deleted list + territories reflect the change
-      router.refresh()
-    } catch {
-      toast.error('Could not remove — restoring the row.')
-      setList((prev) => [c, ...prev])
+    if (result.zipHeirName) {
+      toast.success(`Removed ${result.name}. Their zips were reassigned to ${result.zipHeirName}.`)
+    } else if (result.uncoveredZips.length > 0) {
+      toast.warning(
+        `Removed ${result.name}. ${result.uncoveredZips.length} zip${result.uncoveredZips.length > 1 ? 's' : ''} now uncovered: ` +
+          `${result.uncoveredZips.slice(0, 6).join(', ')}${result.uncoveredZips.length > 6 ? '…' : ''}.`
+      )
+    } else {
+      toast.success(`Removed ${result.name}. Their zip codes are still covered by other reps.`)
     }
+
+    if (result.leadAction === 'reassigning') {
+      toast.success(`Reassigning ${result.name}'s open leads — running in the background.`)
+    }
+
+    // refresh so the Recently deleted list + territories reflect the change
+    router.refresh()
   }
 
   const q = query.trim().toLowerCase()
@@ -225,7 +197,8 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
       {deleting && (
         <DeleteModal
           consultant={deleting}
-          onConfirm={confirmDelete}
+          heirs={list.filter((x) => x.id !== deleting.id && x.active)}
+          onDeleted={handleDeleted}
           onClose={() => setDeleting(null)}
         />
       )}
@@ -235,15 +208,6 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
           reps={deletedReps}
           heirs={list}
           onClose={() => setShowDeleted(false)}
-        />
-      )}
-
-      {reassignTarget && (
-        <ReassignModal
-          rep={reassignTarget}
-          heirs={list}
-          onDone={() => router.refresh()}
-          onClose={() => setReassignTarget(null)}
         />
       )}
     </div>

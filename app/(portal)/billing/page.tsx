@@ -25,7 +25,7 @@ export default async function BillingPage({
   // Get current portal user profile
   const { data: portalUser } = await supabase
     .from('portal_users')
-    .select('id, auth_user_id, email, role, client_id, full_name, phone, can_access_billing')
+    .select('id, auth_user_id, email, role, client_id, full_name, phone, is_super_manager')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -34,14 +34,13 @@ export default async function BillingPage({
   }
 
   // admin and client_owner always have billing access; a client_manager
-  // only does if the owner granted the can_access_billing scope. Mirrors
-  // the same check enforced server-side in the /api/billing/* routes --
-  // this one is just so the button doesn't show at all for a manager who
-  // can't use it.
+  // only does if they're a super manager. Mirrors the same check enforced
+  // server-side in the /api/billing/* routes -- this one is just so the
+  // button doesn't show at all for a manager who can't use it.
   const hasBillingAccess =
     portalUser.role === 'admin' ||
     portalUser.role === 'client_owner' ||
-    (portalUser.role === 'client_manager' && portalUser.can_access_billing === true)
+    (portalUser.role === 'client_manager' && portalUser.is_super_manager === true)
 
   // Build the query to load billable events joined with company name
   let query = supabase
