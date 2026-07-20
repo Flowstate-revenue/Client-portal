@@ -53,8 +53,13 @@ export default function ConsultantsClient({ consultants, role, activeClientId, d
   function handleDeleted(result: DeleteResult) {
     setList((prev) => prev.filter((x) => x.id !== result.id))
 
-    if (result.zipHeirName) {
-      toast.success(`Removed ${result.name}. Their zips were reassigned to ${result.zipHeirName}.`)
+    if (result.zipHeirNames.length > 0) {
+      const handoff = `Their zips were reassigned to ${result.zipHeirNames.join(', ')}.`
+      const gap =
+        result.uncoveredZips.length > 0
+          ? ` ${result.uncoveredZips.length} zip${result.uncoveredZips.length > 1 ? 's' : ''} still uncovered.`
+          : ''
+      toast.success(`Removed ${result.name}. ${handoff}${gap}`)
     } else if (result.uncoveredZips.length > 0) {
       toast.warning(
         `Removed ${result.name}. ${result.uncoveredZips.length} zip${result.uncoveredZips.length > 1 ? 's' : ''} now uncovered: ` +

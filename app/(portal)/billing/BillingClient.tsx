@@ -306,6 +306,10 @@ export default function BillingClient({
               <span>Referrals:</span>
               <span className="font-bold text-foreground">{metrics.outcomeCounts.referral}</span>
             </div>
+            <div className="flex justify-between">
+              <span>Reviews:</span>
+              <span className="font-bold text-foreground">{metrics.outcomeCounts.review}</span>
+            </div>
           </div>
         </div>
       </div>

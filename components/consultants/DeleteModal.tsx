@@ -19,11 +19,12 @@ export interface DeleteResult {
   id: string
   name: string
   uncoveredZips: string[]
-  zipHeirName: string | null
+  zipHeirNames: string[]
   leadAction: 'reassigning' | 'skipped' | 'none'
 }
 
 type LeadMode = 'round_robin' | 'heir'
+type ZipMode = 'bulk' | 'manual'
 
 export default function DeleteModal({ consultant, heirs, onDeleted, onClose }: DeleteModalProps) {
   const fullName = `${consultant.firstName} ${consultant.lastName}`.trim() || consultant.email
@@ -35,7 +36,9 @@ export default function DeleteModal({ consultant, heirs, onDeleted, onClose }: D
   const [uncoveredZips, setUncoveredZips] = useState<string[]>([])
 
   // decisions the manager makes before confirming
-  const [zipHeirId, setZipHeirId] = useState<string>('')
+  const [zipMode, setZipMode] = useState<ZipMode>('bulk')
+  const [zipHeirId, setZipHeirId] = useState<string>('') // bulk mode: one rep for every zip
+  const [zipAssignments, setZipAssignments] = useState<Record<string, string>>({}) // manual mode: zip -> repId
   const [reassignLeads, setReassignLeads] = useState(true)
   const [leadMode, setLeadMode] = useState<LeadMode>('round_robin')
   const [leadHeirId, setLeadHeirId] = useState<string>(heirs[0]?.id ?? '')
@@ -85,33 +88,51 @@ export default function DeleteModal({ consultant, heirs, onDeleted, onClose }: D
       const delJson = (await delRes.json()) as { uncovered_zips?: string[] }
       const freshUncovered = delJson.uncovered_zips ?? []
 
-      // 2. zip reassignment, if the manager picked a rep to inherit the gap
-      let zipHeirName: string | null = null
-      if (zipHeirId && freshUncovered.length > 0) {
-        const heir = heirs.find((h) => h.id === zipHeirId)
-        if (heir) {
-          const mergedZips = Array.from(new Set([...heir.zipCodes, ...freshUncovered]))
-          const updRes = await fetch('/api/consultants/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: heir.id,
-              first_name: heir.firstName,
-              last_name: heir.lastName,
-              phone: heir.phone,
-              active: heir.active,
-              routing_paused: heir.routingPaused,
-              routing_weight: heir.routingWeight,
-              zip_codes: mergedZips,
-            }),
-          })
-          if (updRes.ok) {
-            zipHeirName = `${heir.firstName} ${heir.lastName}`.trim() || heir.email
-          } else {
-            toast.error(`Removed ${fullName}, but couldn't hand off their zips — reassign from Recently deleted.`)
-          }
+      // 2. zip reassignment — build a zip -> heirId map from whichever mode the
+      // manager used, then apply it one heir at a time (each call merges into
+      // that heir's existing zip_codes via the update RPC).
+      const assignments: Record<string, string> =
+        zipMode === 'bulk'
+          ? zipHeirId
+            ? Object.fromEntries(consultant.zipCodes.map((z) => [z, zipHeirId]))
+            : {}
+          : zipAssignments
+
+      const grouped = new Map<string, string[]>()
+      for (const [zip, heirId] of Object.entries(assignments)) {
+        if (!heirId) continue
+        if (!grouped.has(heirId)) grouped.set(heirId, [])
+        grouped.get(heirId)!.push(zip)
+      }
+
+      const zipHeirNames: string[] = []
+      for (const [heirId, zips] of grouped) {
+        const heir = heirs.find((h) => h.id === heirId)
+        if (!heir) continue
+        const mergedZips = Array.from(new Set([...heir.zipCodes, ...zips]))
+        const updRes = await fetch('/api/consultants/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: heir.id,
+            first_name: heir.firstName,
+            last_name: heir.lastName,
+            phone: heir.phone,
+            active: heir.active,
+            routing_paused: heir.routingPaused,
+            routing_weight: heir.routingWeight,
+            zip_codes: mergedZips,
+          }),
+        })
+        if (updRes.ok) {
+          zipHeirNames.push(`${heir.firstName} ${heir.lastName}`.trim() || heir.email)
+        } else {
+          toast.error(`Removed ${fullName}, but couldn't hand ${zips.length > 1 ? 'some zips' : 'a zip'} off to ${heir.firstName} — reassign from Recently deleted.`)
         }
       }
+
+      const reassignedZips = new Set(Object.keys(assignments).filter((z) => assignments[z]))
+      const stillUncovered = freshUncovered.filter((z) => !reassignedZips.has(z))
 
       // 3. lead reassignment, if requested and the rep was ever provisioned
       let leadAction: DeleteResult['leadAction'] = 'none'
@@ -141,8 +162,8 @@ export default function DeleteModal({ consultant, heirs, onDeleted, onClose }: D
       onDeleted({
         id: consultant.id,
         name: fullName,
-        uncoveredZips: freshUncovered,
-        zipHeirName,
+        uncoveredZips: stillUncovered,
+        zipHeirNames,
         leadAction,
       })
       onClose()
@@ -198,44 +219,90 @@ export default function DeleteModal({ consultant, heirs, onDeleted, onClose }: D
                 Couldn&apos;t check zip coverage in advance — you&apos;ll see any gaps under Recently
                 deleted after you confirm.
               </p>
-            ) : uncoveredZips.length === 0 ? (
-              <p style={{ color: 'var(--muted-foreground)' }}>
-                All of {fullName}&apos;s zip codes are already covered by other reps — no coverage gap.
-              </p>
+            ) : consultant.zipCodes.length === 0 ? (
+              <p style={{ color: 'var(--muted-foreground)' }}>This rep has no zip codes assigned.</p>
             ) : (
               <>
-                <p className="flex items-center gap-1.5 font-medium mb-1.5" style={{ color: '#FCD34D' }}>
-                  <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                  {uncoveredZips.length} zip{uncoveredZips.length > 1 ? 's' : ''} will become uncovered
-                </p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {uncoveredZips.map((zip) => (
-                    <span
-                      key={zip}
-                      className="font-mono text-xs rounded px-1.5 py-0.5"
-                      style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#FCD34D' }}
-                    >
-                      {zip}
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <p className="font-medium" style={{ color: 'var(--foreground)' }}>
+                    Reassign {consultant.zipCodes.length} zip{consultant.zipCodes.length > 1 ? 's' : ''}
+                  </p>
+                  {uncoveredZips.length > 0 && (
+                    <span className="flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: '#FCD34D' }}>
+                      <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                      {uncoveredZips.length} would go uncovered
                     </span>
-                  ))}
+                  )}
                 </div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--muted-foreground)' }}>
-                  Reassign these zips to
-                </label>
-                <select
-                  value={zipHeirId}
-                  onChange={(e) => setZipHeirId(e.target.value)}
-                  disabled={submitting}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                {uncoveredZips.length === 0 && (
+                  <p className="text-xs mb-3" style={{ color: 'var(--subtle)' }}>
+                    All of these are already covered by other reps — reassigning is optional.
+                  </p>
+                )}
+
+                <label
+                  className="flex items-center gap-2 mt-2 mb-3 text-xs cursor-pointer select-none"
+                  style={{ color: 'var(--muted-foreground)' }}
                 >
-                  <option value="">Leave uncovered — handle later</option>
-                  {heirs.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {`${h.firstName} ${h.lastName}`.trim() || h.email}
-                    </option>
-                  ))}
-                </select>
+                  <input
+                    type="checkbox"
+                    checked={zipMode === 'manual'}
+                    onChange={(e) => setZipMode(e.target.checked ? 'manual' : 'bulk')}
+                    disabled={submitting}
+                  />
+                  Assign zips individually
+                </label>
+
+                {zipMode === 'bulk' ? (
+                  <select
+                    value={zipHeirId}
+                    onChange={(e) => setZipHeirId(e.target.value)}
+                    disabled={submitting}
+                    className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                  >
+                    <option value="">Leave as-is — don&apos;t reassign</option>
+                    {heirs.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        Assign all to {`${h.firstName} ${h.lastName}`.trim() || h.email}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto pr-1">
+                    {consultant.zipCodes.map((zip) => {
+                      const isUncovered = uncoveredZips.includes(zip)
+                      return (
+                        <div
+                          key={zip}
+                          className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5"
+                          style={{ border: '1px solid var(--border)' }}
+                        >
+                          <span className="flex items-center gap-1.5 font-mono text-xs" style={{ color: 'var(--foreground)' }}>
+                            {zip}
+                            {isUncovered && <AlertTriangle size={11} style={{ color: '#FCD34D', flexShrink: 0 }} />}
+                          </span>
+                          <select
+                            value={zipAssignments[zip] ?? ''}
+                            onChange={(e) =>
+                              setZipAssignments((prev) => ({ ...prev, [zip]: e.target.value }))
+                            }
+                            disabled={submitting}
+                            className="text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
+                            style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }}
+                          >
+                            <option value="">{isUncovered ? 'Leave uncovered' : 'No change'}</option>
+                            {heirs.map((h) => (
+                              <option key={h.id} value={h.id}>
+                                {`${h.firstName} ${h.lastName}`.trim() || h.email}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </>
             )}
           </div>
