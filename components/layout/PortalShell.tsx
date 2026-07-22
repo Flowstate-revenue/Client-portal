@@ -9,9 +9,10 @@ interface PortalShellProps {
   children: React.ReactNode
   portalUser: PortalUser | null
   clients: Client[]
+  companyName?: string | null
 }
 
-export default function PortalShell({ children, portalUser, clients }: PortalShellProps) {
+export default function PortalShell({ children, portalUser, clients, companyName }: PortalShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
@@ -24,6 +25,7 @@ export default function PortalShell({ children, portalUser, clients }: PortalShe
         <TopBar
           portalUser={portalUser}
           clients={clients}
+          companyName={companyName}
           onMenuClick={() => setMobileMenuOpen(true)}
         />
         <main className="flex-1 p-6 md:p-8 min-w-0">

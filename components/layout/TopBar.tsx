@@ -1,8 +1,9 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { Sun, Moon, LogOut, Menu } from 'lucide-react'
+import { Sun, Moon, LogOut, Menu, User } from 'lucide-react'
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Client, PortalUser } from '@/types/supabase'
 import { useMounted } from '@/hooks/useMounted'
@@ -10,6 +11,7 @@ import { useMounted } from '@/hooks/useMounted'
 interface TopBarProps {
   portalUser: PortalUser | null
   clients: Client[]
+  companyName?: string | null
   onMenuClick?: () => void
 }
 
@@ -67,7 +69,45 @@ export function ClientDropdown({ clients }: { clients: Client[] }) {
   )
 }
 
-export default function TopBar({ portalUser, clients, onMenuClick }: TopBarProps) {
+// Icon + "Company / portal user name" block in the top-right, linking to
+// My Account. Split out (like ClientDropdown above) because it reads the
+// admin's "view as client" selection from ?client_id= via useSearchParams,
+// which needs a Suspense boundary.
+function AccountLink({
+  portalUser,
+  clients,
+  companyName,
+}: {
+  portalUser: PortalUser
+  clients: Client[]
+  companyName?: string | null
+}) {
+  const searchParams = useSearchParams()
+  const clientId = searchParams?.get('client_id')
+
+  const displayCompany =
+    portalUser.role === 'admin'
+      ? clients.find((c) => c.id === clientId)?.company_name || 'Flowstate'
+      : companyName || 'Flowstate'
+
+  const href = clientId ? `/my-account?client_id=${clientId}` : '/my-account'
+
+  return (
+    <Link href={href} className="flex items-center gap-3 group">
+      <span className="p-2 rounded-lg border border-border bg-card group-hover:bg-muted text-foreground transition-colors duration-150 inline-flex">
+        <User size={18} />
+      </span>
+      <span className="flex-col text-right hidden md:flex">
+        <span className="text-xs font-semibold text-foreground">{displayCompany}</span>
+        <span className="text-[10px] text-muted-foreground leading-none">
+          {portalUser.full_name || 'User'}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+export default function TopBar({ portalUser, clients, companyName, onMenuClick }: TopBarProps) {
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -106,15 +146,10 @@ export default function TopBar({ portalUser, clients, onMenuClick }: TopBarProps
         
         {portalUser && (
           <div className="flex items-center gap-3 pl-3 border-l border-border">
-            <div className="flex flex-col text-right hidden md:flex">
-              <span className="text-xs font-semibold text-foreground">
-                {portalUser.full_name || 'User'}
-              </span>
-              <span className="text-[10px] text-muted-foreground leading-none">
-                {portalUser.email} ({portalUser.role})
-              </span>
-            </div>
-            
+            <Suspense fallback={<div className="w-9 h-9" />}>
+              <AccountLink portalUser={portalUser} clients={clients} companyName={companyName} />
+            </Suspense>
+
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg border border-border bg-card hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors duration-150 cursor-pointer"

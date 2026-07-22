@@ -34,16 +34,26 @@ export default async function PortalLayout({
 
   // If user is an admin, fetch all clients for the spoofing dropdown
   let clients: Client[] = []
+  // Non-admins belong to exactly one client -- resolve its company name
+  // once here so the TopBar can show it without an extra client-side fetch.
+  let companyName: string | null = null
   if (portalUser.role === 'admin') {
     const { data } = await supabase
       .from('clients')
       .select('id, company_name, ghl_location_id, billing_email, billing_day, billing_status, deposit_sits_remaining')
       .order('company_name', { ascending: true })
     clients = (data as Client[]) || []
+  } else if (portalUser.client_id) {
+    const { data } = await supabase
+      .from('clients')
+      .select('company_name')
+      .eq('id', portalUser.client_id)
+      .maybeSingle()
+    companyName = data?.company_name ?? null
   }
 
   return (
-    <PortalShell portalUser={portalUser} clients={clients}>
+    <PortalShell portalUser={portalUser} clients={clients} companyName={companyName}>
       {children}
     </PortalShell>
   )
