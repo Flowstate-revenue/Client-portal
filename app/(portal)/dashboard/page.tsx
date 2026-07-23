@@ -1,7 +1,30 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import DashboardClient, { type DashboardSummary, type WeekPoint } from './DashboardClient'
+import DashboardClient, { type DashboardData, type WeekPoint } from './DashboardClient'
 import type { PortalKpiSummary, PortalKpiWeeklyTrendRow } from '@/types/supabase'
+import {
+  buildFunnelSnapshot,
+  buildNoShowRescue,
+  buildQualificationShield,
+  buildQualifiedYield,
+  buildSpeedToFirstTouch,
+  type LeadEventRow,
+  type OpportunityRow,
+} from '@/lib/dashboard-metrics'
+
+// How far back we pull the raw lead_events / opportunities timeline for the
+// funnel, speed, qualification, and no-show/rescue metrics. Volume is low
+// today, but this keeps the query bounded as it grows -- if this ever needs
+// to look further back (e.g. a client asking about last quarter), promote it
+// to a real date-range control instead of widening the constant.
+const TIMELINE_LOOKBACK_DAYS = 180
+
+// Plain helper (not a component/hook) so the impure Date.now() call doesn't
+// trip the react-hooks purity rule, which treats PascalCase/useX function
+// bodies as render code that must be idempotent.
+function lookbackIsoDate(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -51,7 +74,8 @@ export default async function DashboardPage({
 
   const summary = aggregateSummary((summaryRows as PortalKpiSummary[]) ?? [])
 
-  // Trend chart: sits per week for the last 12 weeks, scoped the same way.
+  // Trend: sits per week for the last 12 weeks, scoped the same way. Powers
+  // both the hero sparkline and its week-over-week comparison badge.
   const { data: trendRows, error: trendError } = await supabase.rpc('portal_kpi_weekly_trend', {
     p_weeks: 12,
   })
@@ -59,12 +83,56 @@ export default async function DashboardPage({
 
   const trend = buildWeeklySitsTrend((trendRows as PortalKpiWeeklyTrendRow[]) ?? [], activeClientId)
 
-  return <DashboardClient summary={summary} trend={trend} />
+  // Raw pipeline timeline, scoped the same way as everything else. Funnel,
+  // qualification, speed-to-touch, and no-show/rescue are all derived from
+  // these two tables in lib/dashboard-metrics.ts (see that file for why
+  // lead_events -- not the appointments snapshot table -- is the source of
+  // truth for anything history-shaped).
+  const lookbackIso = lookbackIsoDate(TIMELINE_LOOKBACK_DAYS)
+
+  let leadEventsQuery = supabase
+    .from('lead_events')
+    .select('event_type, occurred_at, contact_id, opportunity_id, pipeline_stage, opportunity_status, client_id')
+    .gte('occurred_at', lookbackIso)
+    .order('occurred_at', { ascending: true })
+    .limit(5000)
+  if (activeClientId) leadEventsQuery = leadEventsQuery.eq('client_id', activeClientId)
+  const { data: leadEventRows, error: leadEventsError } = await leadEventsQuery
+  if (leadEventsError) console.error('lead_events query failed:', leadEventsError)
+
+  let opportunitiesQuery = supabase
+    .from('opportunities')
+    .select('ghl_contact_id, ghl_opportunity_id, status, pipeline_stage, client_id')
+    .limit(5000)
+  if (activeClientId) opportunitiesQuery = opportunitiesQuery.eq('client_id', activeClientId)
+  const { data: opportunityRows, error: opportunitiesError } = await opportunitiesQuery
+  if (opportunitiesError) console.error('opportunities query failed:', opportunitiesError)
+
+  const leadEvents = (leadEventRows as LeadEventRow[]) ?? []
+  const opportunities = (opportunityRows as OpportunityRow[]) ?? []
+
+  const funnel = buildFunnelSnapshot(leadEvents, opportunities)
+  const qualification = buildQualificationShield(leadEvents, opportunities)
+  const qualifiedYield = buildQualifiedYield(leadEvents, opportunities)
+  const speedToFirstTouch = buildSpeedToFirstTouch(leadEvents)
+  const noShowRescue = buildNoShowRescue(leadEvents, opportunities)
+
+  const data: DashboardData = {
+    summary,
+    trend,
+    funnel,
+    qualification,
+    qualifiedYield,
+    speedToFirstTouch,
+    noShowRescue,
+  }
+
+  return <DashboardClient data={data} />
 }
 
 // Sum every visible client's row into one aggregate. For a client_owner (or an
 // admin viewing-as one client) this is just that single row passed through.
-function aggregateSummary(rows: PortalKpiSummary[]): DashboardSummary {
+function aggregateSummary(rows: PortalKpiSummary[]): DashboardData['summary'] {
   return rows.reduce(
     (acc, r) => ({
       sitsTotal: acc.sitsTotal + (Number(r.sits_total) || 0),

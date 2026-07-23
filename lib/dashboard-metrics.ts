@@ -1,0 +1,321 @@
+// Pure, dependency-free aggregation logic for the client dashboard.
+//
+// Design principle (per Flowstate-Dashboard-Metrics-Reference): "sell the
+// outcome, not the plumbing." Every function here takes raw rows from
+// lead_events / opportunities (the append-only timeline + current pipeline
+// state) and returns a small, presentation-ready shape. No Supabase client
+// lives in this file -- it is pure and unit-testable.
+//
+// Sourcing rule (from the reference doc, section 2): "No-show/rebook counted
+// from lead_events, never the current stage (a rebooked no-show hides in the
+// snapshot)." That's why the funnel, speed, and no-show/rescue metrics below
+// are all derived from lead_events timeline rows rather than the appointments
+// snapshot table -- appointments only carries "current state," which erases
+// exactly the history these metrics need.
+//
+// Sourcing rule #2: "unqualified != lost -- exclude from the conversion
+// denominator, surface separately as a benefit." Every conversion-style ratio
+// below excludes unqualified/abandoned leads from its denominator; the
+// Qualification Shield reframes that same count as delivered value (time
+// saved), never as a loss.
+
+export interface LeadEventRow {
+  event_type: string
+  occurred_at: string
+  contact_id: string | null
+  opportunity_id: string | null
+  pipeline_stage: string | null
+  opportunity_status: string | null
+  client_id: string | null
+}
+
+export interface OpportunityRow {
+  ghl_contact_id: string | null
+  ghl_opportunity_id: string
+  status: string | null
+  pipeline_stage: string | null
+  client_id: string | null
+}
+
+export interface FunnelStage {
+  key: 'raw' | 'engaged' | 'qualified' | 'scheduled' | 'sat'
+  label: string
+  count: number
+}
+
+export interface FunnelSnapshot {
+  stages: FunnelStage[]
+}
+
+export interface QualificationShield {
+  screenedCount: number
+  hoursSaved: number
+}
+
+export interface SpeedToFirstTouch {
+  avgMinutes: number | null
+  sampleSize: number
+  /** Which event type powered the calc -- surfaced in the UI so the number
+   *  is never presented as more precise than the underlying data supports. */
+  source: 'first_outbound' | 'lead_assigned' | null
+}
+
+export interface NoShowRescue {
+  totalBooked: number
+  noShows: number
+  rescued: number
+}
+
+export interface QualifiedYield {
+  sits: number
+  qualifiedLeads: number
+}
+
+// Shape of the aggregated portal_kpi_summary view (see page.tsx) and its
+// weekly-trend sibling. Defined here -- rather than in the client component --
+// so every dashboard component can import the same types without reaching
+// into the page-level client file.
+export interface DashboardSummary {
+  sitsTotal: number
+  sitsLast7d: number
+  sitsLast30d: number
+  sitsValueTotal: number
+  proposalFollowupsTotal: number
+  reactivationsTotal: number
+  referralsTotal: number
+  reviewsTotal: number
+  totalEvents: number
+  totalBillableValue: number
+}
+
+export interface WeekPoint {
+  weekStart: string
+  sits: number
+}
+
+// Sales-consultant hours saved per screened-out (unqualified) lead. A
+// screened-out lead is one that never becomes a wasted home visit -- this is
+// the average consultant time (travel + attempted visit) a bad-fit lead would
+// otherwise have consumed. Tunable; kept as a named constant rather than a
+// magic number so it's easy to revisit once we have real time-tracking data.
+export const HOURS_SAVED_PER_SCREENED_LEAD = 1.5
+
+// Funnel/event-type stage ranks. Higher = further along. `pipeline_stage` on
+// a lead_events row is the primary signal; when it's null (e.g. some
+// appointment_booked webhooks don't carry a stage) we fall back to a rank
+// inferred from the event_type itself.
+const STAGE_RANK: Record<string, number> = {
+  'new lead': 0,
+  'in conversation': 1,
+  unqualified: 1, // screened out -- they WERE engaged, but capped below "qualified"
+  qualified: 2,
+  'appointment scheduled': 3,
+  'no-show': 3, // still counts as scheduled; a rescued no-show can still reach "sat"
+  'sit appointment': 4,
+}
+
+const EVENT_TYPE_RANK: Record<string, number> = {
+  lead_engaged: 1,
+  first_outbound: 1,
+  appointment_booked: 3,
+  appointment_confirmed: 3,
+  appointment_rescheduled: 3,
+  appointment_no_show: 3,
+  appointment_cancelled: 3,
+  appointment_sat: 4,
+}
+
+const UNQUALIFIED_STAGE = 'unqualified'
+const UNQUALIFIED_STATUSES = new Set(['abandoned', 'lost'])
+
+function rankFromStage(stage: string | null | undefined): number | null {
+  if (!stage) return null
+  const key = stage.trim().toLowerCase()
+  return key in STAGE_RANK ? STAGE_RANK[key] : null
+}
+
+function isUnqualifiedSignal(stage: string | null | undefined, status: string | null | undefined): boolean {
+  if (stage && stage.trim().toLowerCase() === UNQUALIFIED_STAGE) return true
+  if (status && UNQUALIFIED_STATUSES.has(status.trim().toLowerCase())) return true
+  return false
+}
+
+// A lead is keyed by client+contact so an admin's all-clients aggregate view
+// never collides two different clients' GHL contact ids.
+function leadKey(clientId: string | null, contactId: string | null): string | null {
+  if (!contactId) return null
+  return `${clientId ?? 'unknown'}:${contactId}`
+}
+
+interface LeadState {
+  maxRank: number
+  unqualified: boolean
+}
+
+/** Single pass over lead_events + opportunities: for every lead (keyed by
+ *  contact), work out the furthest pipeline rank they've ever reached and
+ *  whether they were ever screened out as unqualified. This one map powers
+ *  the funnel, the qualification shield, and the qualified-yield ratio, so
+ *  all three metrics agree on the same underlying population. */
+function buildLeadStates(
+  leadEvents: LeadEventRow[],
+  opportunities: OpportunityRow[]
+): Map<string, LeadState> {
+  const states = new Map<string, LeadState>()
+
+  const touch = (key: string | null, rank: number, unqualified: boolean) => {
+    if (!key) return
+    const existing = states.get(key)
+    if (!existing) {
+      states.set(key, { maxRank: rank, unqualified })
+      return
+    }
+    existing.maxRank = Math.max(existing.maxRank, rank)
+    existing.unqualified = existing.unqualified || unqualified
+  }
+
+  for (const row of leadEvents) {
+    const key = leadKey(row.client_id, row.contact_id)
+    if (!key) continue
+    // Ensure every lead_created contact enters the population even if
+    // nothing else ever happens to them (rank 0, "raw").
+    if (row.event_type === 'lead_created') touch(key, 0, false)
+
+    const unqualified = isUnqualifiedSignal(row.pipeline_stage, row.opportunity_status)
+    const stageRank = rankFromStage(row.pipeline_stage)
+    const rank = stageRank ?? EVENT_TYPE_RANK[row.event_type] ?? 0
+    touch(key, rank, unqualified)
+  }
+
+  for (const opp of opportunities) {
+    const key = leadKey(opp.client_id, opp.ghl_contact_id)
+    if (!key) continue
+    const unqualified = isUnqualifiedSignal(opp.pipeline_stage, opp.status)
+    const rank = rankFromStage(opp.pipeline_stage) ?? 0
+    touch(key, rank, unqualified)
+  }
+
+  return states
+}
+
+export function buildFunnelSnapshot(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): FunnelSnapshot {
+  const states = buildLeadStates(leadEvents, opportunities)
+  const ranks = Array.from(states.values()).map((s) => s.maxRank)
+  const countAtLeast = (min: number) => ranks.filter((r) => r >= min).length
+
+  return {
+    stages: [
+      { key: 'raw', label: 'Raw Leads', count: countAtLeast(0) },
+      { key: 'engaged', label: 'Engaged', count: countAtLeast(1) },
+      { key: 'qualified', label: 'Qualified', count: countAtLeast(2) },
+      { key: 'scheduled', label: 'Scheduled', count: countAtLeast(3) },
+      { key: 'sat', label: 'Sits Delivered', count: countAtLeast(4) },
+    ],
+  }
+}
+
+export function buildQualificationShield(
+  leadEvents: LeadEventRow[],
+  opportunities: OpportunityRow[]
+): QualificationShield {
+  const states = buildLeadStates(leadEvents, opportunities)
+  const screenedCount = Array.from(states.values()).filter((s) => s.unqualified).length
+  return {
+    screenedCount,
+    hoursSaved: Math.round(screenedCount * HOURS_SAVED_PER_SCREENED_LEAD * 10) / 10,
+  }
+}
+
+/** Sits ÷ qualified leads, where "qualified" means *not screened out* -- per
+ *  the reference doc, unqualified leads are excluded from the denominator
+ *  entirely rather than counted as a loss. This is deliberately a different
+ *  population than the funnel's "Qualified" stage bucket (which only counts
+ *  leads that specifically reached the Qualified pipeline stage): this ratio
+ *  answers "of everyone still in play, how many became a sit," while the
+ *  funnel answers "how many specifically passed the Qualified stage gate." */
+export function buildQualifiedYield(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): QualifiedYield {
+  const states = buildLeadStates(leadEvents, opportunities)
+  const all = Array.from(states.values())
+  const qualifiedLeads = all.filter((s) => !s.unqualified).length
+  const sits = all.filter((s) => s.maxRank >= 4).length
+  return { sits, qualifiedLeads }
+}
+
+/** avg(first_outbound - lead_created) per contact. Falls back to
+ *  lead_assigned when no first_outbound events exist yet (common pre-launch,
+ *  before outbound-call webhooks are wired up) so the card can still show a
+ *  real number instead of a permanent empty state -- the UI labels which
+ *  source powered the number so it's never overclaimed as more precise than
+ *  it is. */
+export function buildSpeedToFirstTouch(leadEvents: LeadEventRow[]): SpeedToFirstTouch {
+  const createdAt = new Map<string, number>()
+  const touchAt = new Map<string, { first_outbound?: number; lead_assigned?: number }>()
+
+  for (const row of leadEvents) {
+    const key = leadKey(row.client_id, row.contact_id)
+    if (!key) continue
+    const t = new Date(row.occurred_at).getTime()
+    if (Number.isNaN(t)) continue
+
+    if (row.event_type === 'lead_created') {
+      const existing = createdAt.get(key)
+      if (existing === undefined || t < existing) createdAt.set(key, t)
+    }
+    if (row.event_type === 'first_outbound' || row.event_type === 'lead_assigned') {
+      const bucket = touchAt.get(key) ?? {}
+      const field = row.event_type as 'first_outbound' | 'lead_assigned'
+      if (bucket[field] === undefined || t < (bucket[field] as number)) bucket[field] = t
+      touchAt.set(key, bucket)
+    }
+  }
+
+  for (const source of ['first_outbound', 'lead_assigned'] as const) {
+    const diffsMinutes: number[] = []
+    for (const [key, created] of createdAt) {
+      const touch = touchAt.get(key)?.[source]
+      if (touch === undefined) continue
+      const minutes = (touch - created) / 60000
+      if (minutes >= 0) diffsMinutes.push(minutes)
+    }
+    if (diffsMinutes.length > 0) {
+      const avg = diffsMinutes.reduce((a, b) => a + b, 0) / diffsMinutes.length
+      return { avgMinutes: Math.round(avg * 10) / 10, sampleSize: diffsMinutes.length, source }
+    }
+  }
+
+  return { avgMinutes: null, sampleSize: 0, source: null }
+}
+
+/** Booked / no-show / rescued, read from the lead_events timeline so a
+ *  rebooked-and-sat lead is correctly counted as rescued even though their
+ *  *current* pipeline stage only shows the final outcome. */
+export function buildNoShowRescue(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): NoShowRescue {
+  const states = buildLeadStates(leadEvents, opportunities)
+  const totalBooked = Array.from(states.values()).filter((s) => s.maxRank >= 3).length
+
+  const timelineByLead = new Map<string, { type: string; t: number }[]>()
+  for (const row of leadEvents) {
+    const key = leadKey(row.client_id, row.contact_id)
+    if (!key) continue
+    if (row.event_type !== 'appointment_no_show' && row.event_type !== 'appointment_sat') continue
+    const t = new Date(row.occurred_at).getTime()
+    if (Number.isNaN(t)) continue
+    const list = timelineByLead.get(key) ?? []
+    list.push({ type: row.event_type, t })
+    timelineByLead.set(key, list)
+  }
+
+  let noShows = 0
+  let rescued = 0
+  for (const events of timelineByLead.values()) {
+    events.sort((a, b) => a.t - b.t)
+    const hadNoShow = events.some((e) => e.type === 'appointment_no_show')
+    if (!hadNoShow) continue
+    noShows += 1
+    // Rescued if a sat event happened at or after the first no-show.
+    const firstNoShow = events.find((e) => e.type === 'appointment_no_show')!.t
+    if (events.some((e) => e.type === 'appointment_sat' && e.t >= firstNoShow)) rescued += 1
+  }
+
+  return { totalBooked, noShows, rescued }
+}
