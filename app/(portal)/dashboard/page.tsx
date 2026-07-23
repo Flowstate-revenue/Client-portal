@@ -2,15 +2,38 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient, { type DashboardData, type WeekPoint } from './DashboardClient'
 import type { PortalKpiSummary, PortalKpiWeeklyTrendRow } from '@/types/supabase'
+import type { FunnelPeriod } from '@/components/dashboard/PeriodToggle'
 import {
-  buildFunnelSnapshot,
+  buildFunnelCountsForCohortWindow,
   buildNoShowRescue,
   buildQualificationShield,
   buildQualifiedYield,
   buildSpeedToFirstTouch,
+  type FunnelPeriodCounts,
   type LeadEventRow,
   type OpportunityRow,
 } from '@/lib/dashboard-metrics'
+
+// Cohort-window lengths for the funnel card's period toggle. "today" is
+// computed live from lead_events/opportunities (see below); the other three
+// read from the portal_funnel_daily pre-aggregation table instead, since
+// re-deriving a 6-month reduction from raw events on every page load is the
+// exact thing that table exists to avoid.
+const PERIOD_WINDOW_DAYS: Record<Exclude<FunnelPeriod, 'today'>, number> = {
+  week: 7,
+  month: 30,
+  sixmonth: 182,
+}
+
+interface PortalFunnelDailyRow {
+  client_id: string
+  cohort_date: string
+  raw_leads: number
+  engaged: number
+  qualified: number
+  scheduled: number
+  sat: number
+}
 
 // How far back we pull the raw lead_events / opportunities timeline for the
 // funnel, speed, qualification, and no-show/rescue metrics. Volume is low
@@ -26,13 +49,18 @@ function lookbackIsoDate(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 }
 
+const VALID_PERIODS: FunnelPeriod[] = ['today', 'week', 'month', 'sixmonth']
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ client_id?: string }>
+  searchParams: Promise<{ client_id?: string; period?: string }>
 }) {
   const resolved = await searchParams
-  const selectedClientId = resolved?.client_id
+  const selectedClientId = resolved.client_id
+  const period: FunnelPeriod = VALID_PERIODS.includes(resolved.period as FunnelPeriod)
+    ? (resolved.period as FunnelPeriod)
+    : 'today'
 
   const supabase = await createClient()
 
@@ -111,7 +139,17 @@ export default async function DashboardPage({
   const leadEvents = (leadEventRows as LeadEventRow[]) ?? []
   const opportunities = (opportunityRows as OpportunityRow[]) ?? []
 
-  const funnel = buildFunnelSnapshot(leadEvents, opportunities)
+  // Funnel card: "today" is a live cohort-window reduction over the same
+  // lead_events/opportunities fetch above (today's volume is small enough
+  // that this is cheap and always fresh). Week/Month/6-Month instead sum
+  // pre-aggregated rows out of portal_funnel_daily -- see
+  // supabase/functions/refresh-portal-funnel-daily, which recomputes that
+  // table nightly via pg_cron.
+  const funnelCounts: FunnelPeriodCounts =
+    period === 'today'
+      ? buildFunnelCountsForCohortWindow(leadEvents, opportunities, todayIsoDate())
+      : await fetchFunnelCountsFromDaily(supabase, activeClientId, PERIOD_WINDOW_DAYS[period])
+
   const qualification = buildQualificationShield(leadEvents, opportunities)
   const qualifiedYield = buildQualifiedYield(leadEvents, opportunities)
   const speedToFirstTouch = buildSpeedToFirstTouch(leadEvents)
@@ -120,7 +158,8 @@ export default async function DashboardPage({
   const data: DashboardData = {
     summary,
     trend,
-    funnel,
+    funnelCounts,
+    period,
     qualification,
     qualifiedYield,
     speedToFirstTouch,
@@ -128,6 +167,42 @@ export default async function DashboardPage({
   }
 
   return <DashboardClient data={data} />
+}
+
+// YYYY-MM-DD (UTC) for "today" -- matches the cohort_date format written by
+// refresh-portal-funnel-daily (occurred_at.slice(0, 10)), so the live
+// "today" reduction and the pre-aggregated rows use the same day boundary.
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+async function fetchFunnelCountsFromDaily(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  activeClientId: string | null,
+  windowDays: number
+): Promise<FunnelPeriodCounts> {
+  const sinceDate = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+  let query = supabase
+    .from('portal_funnel_daily')
+    .select('client_id, cohort_date, raw_leads, engaged, qualified, scheduled, sat')
+    .gte('cohort_date', sinceDate)
+  if (activeClientId) query = query.eq('client_id', activeClientId)
+
+  const { data, error } = await query
+  if (error) console.error('portal_funnel_daily query failed:', error)
+
+  const rows = (data as PortalFunnelDailyRow[]) ?? []
+  return rows.reduce(
+    (acc, r) => ({
+      rawLeads: acc.rawLeads + (Number(r.raw_leads) || 0),
+      engaged: acc.engaged + (Number(r.engaged) || 0),
+      qualified: acc.qualified + (Number(r.qualified) || 0),
+      scheduled: acc.scheduled + (Number(r.scheduled) || 0),
+      sat: acc.sat + (Number(r.sat) || 0),
+    }),
+    { rawLeads: 0, engaged: 0, qualified: 0, scheduled: 0, sat: 0 }
+  )
 }
 
 // Sum every visible client's row into one aggregate. For a client_owner (or an

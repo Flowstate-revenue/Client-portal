@@ -1,77 +1,85 @@
-import { ChevronDown } from 'lucide-react'
 import { KpiCard, CardLabel } from './KpiCard'
-import type { FunnelSnapshot as FunnelSnapshotData } from '@/lib/dashboard-metrics'
+import PeriodToggle, { type FunnelPeriod } from './PeriodToggle'
+import { buildFunnelRates, countsToFunnelStages, type FunnelPeriodCounts } from '@/lib/dashboard-metrics'
 
 interface FunnelSnapshotProps {
-  funnel: FunnelSnapshotData
+  counts: FunnelPeriodCounts
+  period: FunnelPeriod
 }
 
-// Section B, left column (2/3 width). Live, interactive-feeling funnel --
-// each stage is a full-width bar scaled against the top-of-funnel count,
-// with a drop-off badge between consecutive stages. Replaces the old
-// skeleton/placeholder bars entirely.
-export default function FunnelSnapshot({ funnel }: FunnelSnapshotProps) {
-  const { stages } = funnel
-  const topCount = stages[0]?.count ?? 0
-  const hasData = topCount > 0
+const PERIOD_LABEL: Record<FunnelPeriod, string> = {
+  today: 'today',
+  week: 'the last 7 days',
+  month: 'the last 30 days',
+  sixmonth: 'the last 6 months',
+}
+
+// Section B, left column (2/3 width). Vertical bars, scaled to CONVERSION
+// RATE (% of raw leads reaching each stage) rather than raw headcount, and
+// with no "drop-off" framing between stages. A 90%+ falloff from raw lead
+// to closed deal is normal in home services (published lead-to-close
+// benchmarks run 2-16% depending on trade) -- showing that as loss
+// misrepresents a healthy business. The two callouts above the chart map to
+// the two stages of that industry benchmark ladder we can compute today
+// (Lead -> Appointment, Appointment -> Sit); benchmark comparison bands
+// aren't wired in yet, but the stage structure is ready for them.
+export default function FunnelSnapshot({ counts, period }: FunnelSnapshotProps) {
+  const stages = countsToFunnelStages(counts)
+  const rates = buildFunnelRates(counts)
+  const rawLeads = counts.rawLeads
+  const hasData = rawLeads > 0
 
   return (
     <KpiCard className="lg:col-span-2">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <CardLabel>Live Funnel Snapshot</CardLabel>
-        <span className="text-xs text-subtle">Raw Leads &rarr; Sits Delivered</span>
+        <PeriodToggle active={period} />
       </div>
 
       {!hasData ? (
-        <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-          No leads in this period yet
+        <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+          No leads created in {PERIOD_LABEL[period]} yet
         </div>
       ) : (
-        <div className="space-y-1">
-          {stages.map((stage, i) => {
-            const prev = i > 0 ? stages[i - 1] : null
-            const widthPct = topCount > 0 ? Math.max((stage.count / topCount) * 100, stage.count > 0 ? 3 : 0) : 0
-            const dropPct =
-              prev && prev.count > 0 ? Math.round(((prev.count - stage.count) / prev.count) * 100) : null
+        <>
+          {/* Headline conversion rates -- the two computable stages of the
+              industry benchmark ladder (Proposal -> Close isn't tracked yet). */}
+          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <div className="text-xs text-muted-foreground">Lead &rarr; Appointment</div>
+              <div className="mt-1 text-xl font-bold tabular-nums text-foreground">
+                {rates.leadToAppointmentPct !== null ? `${rates.leadToAppointmentPct}%` : '--'}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <div className="text-xs text-muted-foreground">Appointment &rarr; Sit</div>
+              <div className="mt-1 text-xl font-bold tabular-nums text-foreground">
+                {rates.appointmentToSitPct !== null ? `${rates.appointmentToSitPct}%` : '--'}
+              </div>
+            </div>
+          </div>
 
-            return (
-              <div key={stage.key}>
-                {prev && (
-                  <div className="flex items-center gap-1.5 py-1 pl-1 text-xs text-subtle">
-                    <ChevronDown size={12} />
-                    {dropPct !== null && dropPct > 0 ? (
-                      <span
-                        className={
-                          dropPct >= 50
-                            ? 'font-medium text-destructive'
-                            : dropPct >= 25
-                              ? 'font-medium text-warning'
-                              : 'font-medium text-muted-foreground'
-                        }
-                      >
-                        -{dropPct}% drop-off
-                      </span>
-                    ) : (
-                      <span className="font-medium text-success">no drop-off</span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <div className="w-32 shrink-0 text-xs font-medium text-muted-foreground">{stage.label}</div>
-                  <div className="h-6 flex-1 rounded bg-muted">
+          {/* Vertical bars: height = % of raw leads reaching that stage. */}
+          <div className="flex h-48 items-end justify-between gap-3 px-1">
+            {stages.map((stage) => {
+              const pct = rawLeads > 0 ? Math.round((stage.count / rawLeads) * 100) : 0
+              const barHeightPct = Math.max(pct, stage.count > 0 ? 4 : 0)
+              return (
+                <div key={stage.key} className="flex h-full flex-1 flex-col items-center justify-end">
+                  <div className="mb-1.5 text-xs font-semibold tabular-nums text-foreground">{pct}%</div>
+                  <div className="flex w-full flex-1 items-end">
                     <div
-                      className={`h-6 rounded ${stage.key === 'sat' ? 'bg-primary' : 'bg-primary/60'}`}
-                      style={{ width: `${widthPct}%` }}
+                      className={`w-full rounded-t ${stage.key === 'sat' ? 'bg-primary' : 'bg-primary/50'}`}
+                      style={{ height: `${barHeightPct}%` }}
                     />
                   </div>
-                  <div className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
-                    {stage.count}
-                  </div>
+                  <div className="mt-2 text-center text-xs font-medium text-muted-foreground">{stage.label}</div>
+                  <div className="text-[11px] tabular-nums text-subtle">{stage.count}</div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </KpiCard>
   )

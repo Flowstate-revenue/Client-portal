@@ -5,10 +5,11 @@ import HeroKpiBar from '@/components/dashboard/HeroKpiBar'
 import FunnelSnapshot from '@/components/dashboard/FunnelSnapshot'
 import NoShowRescueCard from '@/components/dashboard/NoShowRescueCard'
 import SecondaryEngineBreakdown from '@/components/dashboard/SecondaryEngineBreakdown'
+import type { FunnelPeriod } from '@/components/dashboard/PeriodToggle'
 import type {
   DashboardSummary,
   WeekPoint,
-  FunnelSnapshot as FunnelSnapshotData,
+  FunnelPeriodCounts,
   QualificationShield,
   QualifiedYield,
   SpeedToFirstTouch,
@@ -20,7 +21,8 @@ export type { DashboardSummary, WeekPoint }
 export interface DashboardData {
   summary: DashboardSummary
   trend: WeekPoint[]
-  funnel: FunnelSnapshotData
+  funnelCounts: FunnelPeriodCounts
+  period: FunnelPeriod
   qualification: QualificationShield
   qualifiedYield: QualifiedYield
   speedToFirstTouch: SpeedToFirstTouch
@@ -38,7 +40,7 @@ interface DashboardClientProps {
 //   B. Live funnel snapshot + no-show/rescue -- the visual anchor, priority 3
 //   C. Secondary engine breakdown -- collapsed, low-volume products
 export default function DashboardClient({ data }: DashboardClientProps) {
-  const { summary, trend, funnel, qualification, qualifiedYield, speedToFirstTouch, noShowRescue } = data
+  const { summary, trend, funnelCounts, period, qualification, qualifiedYield, speedToFirstTouch, noShowRescue } = data
 
   return (
     <div className="space-y-6 p-8">
@@ -67,7 +69,7 @@ export default function DashboardClient({ data }: DashboardClientProps) {
 
       {/* B. Funnel (2/3) + No-show/rescue (1/3) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <FunnelSnapshot funnel={funnel} />
+        <FunnelSnapshot counts={funnelCounts} period={period} />
         <NoShowRescueCard data={noShowRescue} />
       </div>
 

@@ -150,36 +150,50 @@ function leadKey(clientId: string | null, contactId: string | null): string | nu
 interface LeadState {
   maxRank: number
   unqualified: boolean
+  /** Date (YYYY-MM-DD, UTC) of this lead's earliest lead_created event --
+   *  their "cohort" day. Null if we never saw a lead_created event for them
+   *  (e.g. an opportunity referencing a contact outside the fetched
+   *  window) -- such leads are excluded from cohort-windowed views since
+   *  they can't be reliably placed in a cohort. */
+  cohortDate: string | null
 }
 
 /** Single pass over lead_events + opportunities: for every lead (keyed by
- *  contact), work out the furthest pipeline rank they've ever reached and
- *  whether they were ever screened out as unqualified. This one map powers
- *  the funnel, the qualification shield, and the qualified-yield ratio, so
- *  all three metrics agree on the same underlying population. */
+ *  contact), work out the furthest pipeline rank they've ever reached,
+ *  whether they were ever screened out as unqualified, and which day's
+ *  cohort they belong to. This one map powers the funnel (whole-window and
+ *  cohort-windowed), the qualification shield, and the qualified-yield
+ *  ratio, so every metric agrees on the same underlying population.
+ *
+ *  This mirrors the cohort/rank logic in the refresh-portal-funnel-daily
+ *  Edge Function (supabase/functions -- ported there since Edge Functions
+ *  can't import this module directly). Keep both in sync if the
+ *  pipeline-stage taxonomy changes. */
 function buildLeadStates(
   leadEvents: LeadEventRow[],
   opportunities: OpportunityRow[]
 ): Map<string, LeadState> {
   const states = new Map<string, LeadState>()
 
-  const touch = (key: string | null, rank: number, unqualified: boolean) => {
+  const touch = (key: string | null, rank: number, unqualified: boolean, cohortDate: string | null = null) => {
     if (!key) return
     const existing = states.get(key)
     if (!existing) {
-      states.set(key, { maxRank: rank, unqualified })
+      states.set(key, { maxRank: rank, unqualified, cohortDate })
       return
     }
     existing.maxRank = Math.max(existing.maxRank, rank)
     existing.unqualified = existing.unqualified || unqualified
+    if (cohortDate && (!existing.cohortDate || cohortDate < existing.cohortDate)) existing.cohortDate = cohortDate
   }
 
   for (const row of leadEvents) {
     const key = leadKey(row.client_id, row.contact_id)
     if (!key) continue
     // Ensure every lead_created contact enters the population even if
-    // nothing else ever happens to them (rank 0, "raw").
-    if (row.event_type === 'lead_created') touch(key, 0, false)
+    // nothing else ever happens to them (rank 0, "raw"), and record their
+    // cohort day.
+    if (row.event_type === 'lead_created') touch(key, 0, false, row.occurred_at.slice(0, 10))
 
     const unqualified = isUnqualifiedSignal(row.pipeline_stage, row.opportunity_status)
     const stageRank = rankFromStage(row.pipeline_stage)
@@ -198,19 +212,90 @@ function buildLeadStates(
   return states
 }
 
-export function buildFunnelSnapshot(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): FunnelSnapshot {
-  const states = buildLeadStates(leadEvents, opportunities)
-  const ranks = Array.from(states.values()).map((s) => s.maxRank)
-  const countAtLeast = (min: number) => ranks.filter((r) => r >= min).length
+/** Raw stage counts for a period -- the same shape whether they came from a
+ *  live reduction over lead_events/opportunities (the "Today" window) or
+ *  from summing pre-aggregated rows out of portal_funnel_daily (Week /
+ *  Month / 6 Month). Rate calculations (buildFunnelRates) and the stage-bar
+ *  chart (countsToFunnelStages) both consume this shape so the funnel
+ *  component never needs to know which source it came from. */
+export interface FunnelPeriodCounts {
+  rawLeads: number
+  engaged: number
+  qualified: number
+  scheduled: number
+  sat: number
+}
 
+function statesToCounts(states: LeadState[]): FunnelPeriodCounts {
+  const countAtLeast = (min: number) => states.filter((s) => s.maxRank >= min).length
   return {
-    stages: [
-      { key: 'raw', label: 'Raw Leads', count: countAtLeast(0) },
-      { key: 'engaged', label: 'Engaged', count: countAtLeast(1) },
-      { key: 'qualified', label: 'Qualified', count: countAtLeast(2) },
-      { key: 'scheduled', label: 'Scheduled', count: countAtLeast(3) },
-      { key: 'sat', label: 'Sits Delivered', count: countAtLeast(4) },
-    ],
+    rawLeads: countAtLeast(0),
+    engaged: countAtLeast(1),
+    qualified: countAtLeast(2),
+    scheduled: countAtLeast(3),
+    sat: countAtLeast(4),
+  }
+}
+
+/** Whole-window funnel counts (every lead in the fetched lead_events /
+ *  opportunities, regardless of cohort day) -- used by the "Today" cards
+ *  that aren't cohort-windowed (Qualification Shield, Qualified Yield,
+ *  Speed to First Touch, No-Show/Rescue). */
+export function buildFunnelCounts(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): FunnelPeriodCounts {
+  return statesToCounts(Array.from(buildLeadStates(leadEvents, opportunities).values()))
+}
+
+/** Cohort-windowed funnel counts: only leads whose cohort day (first
+ *  lead_created event) falls on or after `sinceDateIso`. This is what
+ *  powers the funnel card's "Today" toggle option -- Week/Month/6-Month
+ *  read from the pre-aggregated portal_funnel_daily table instead (see
+ *  page.tsx), since recomputing a 6-month live reduction on every request
+ *  doesn't scale the way a once-nightly batch job does. */
+export function buildFunnelCountsForCohortWindow(
+  leadEvents: LeadEventRow[],
+  opportunities: OpportunityRow[],
+  sinceDateIso: string
+): FunnelPeriodCounts {
+  const states = Array.from(buildLeadStates(leadEvents, opportunities).values()).filter(
+    (s) => s.cohortDate !== null && s.cohortDate >= sinceDateIso
+  )
+  return statesToCounts(states)
+}
+
+export function countsToFunnelStages(counts: FunnelPeriodCounts): FunnelStage[] {
+  return [
+    { key: 'raw', label: 'Raw Leads', count: counts.rawLeads },
+    { key: 'engaged', label: 'Engaged', count: counts.engaged },
+    { key: 'qualified', label: 'Qualified', count: counts.qualified },
+    { key: 'scheduled', label: 'Scheduled', count: counts.scheduled },
+    { key: 'sat', label: 'Sits Delivered', count: counts.sat },
+  ]
+}
+
+export function buildFunnelSnapshot(leadEvents: LeadEventRow[], opportunities: OpportunityRow[]): FunnelSnapshot {
+  return { stages: countsToFunnelStages(buildFunnelCounts(leadEvents, opportunities)) }
+}
+
+export interface FunnelRates {
+  /** Solar-benchmark "Lead to Appointment": scheduled ÷ raw leads. */
+  leadToAppointmentPct: number | null
+  /** Solar-benchmark "Appointment to Proposal/Sit" (the site-visit IS the
+   *  proposal moment in home services): sat ÷ scheduled. */
+  appointmentToSitPct: number | null
+}
+
+/** Conversion RATES, not raw counts -- the framing the funnel card leads
+ *  with. A 95% drop from raw leads to closed deals is normal for this
+ *  industry (2-7% lead-to-close is the published benchmark); showing that
+ *  as "loss" misrepresents a healthy business. These two rates map to the
+ *  two stages of the solar/home-services benchmark ladder we can actually
+ *  compute today (Lead→Appointment, Appointment→Sit); Proposal→Close is
+ *  intentionally omitted until proposal_sent/deal_won events start
+ *  flowing through lead_events. */
+export function buildFunnelRates(counts: FunnelPeriodCounts): FunnelRates {
+  return {
+    leadToAppointmentPct: counts.rawLeads > 0 ? Math.round((counts.scheduled / counts.rawLeads) * 100) : null,
+    appointmentToSitPct: counts.scheduled > 0 ? Math.round((counts.sat / counts.scheduled) * 100) : null,
   }
 }
 
