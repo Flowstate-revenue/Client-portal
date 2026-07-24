@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-sidebar: var(--sidebar);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -49,6 +50,7 @@
   --foreground: #0D111A;
   --card: #ffffff;
   --card-foreground: #0D111A;
+  --sidebar: #F5F5F5; /* card, 4% darker -- sidebar surface */
   --popover: #ffffff;
   --popover-foreground: #0D111A;
   --primary: #3366FF; /* blue */
@@ -80,6 +82,7 @@
   --foreground: #E2E8F0; /* text */
   --card: #141926; /* deep */
   --card-foreground: #E2E8F0;
+  --sidebar: #131824; /* card, 4% darker -- sidebar surface */
   --popover: #1D2333; /* elevated */
   --popover-foreground: #E2E8F0;
   --primary: #3366FF; /* blue */
