@@ -1,4 +1,4 @@
 {
-  "//": "Scratch file created while type-checking the portal layout rework (2026-07-24). Not referenced by any build script -- next build uses tsconfig.json. Safe to delete manually.",
+  "//": "Scratch file. Not referenced by any build script -- next build uses tsconfig.json. Safe to delete manually.",
   "extends": "./tsconfig.json"
 }
