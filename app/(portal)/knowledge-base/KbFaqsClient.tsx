@@ -13,7 +13,7 @@ interface KbFaqsClientProps {
 
 const PAGE_SIZE = 20
 
-// Section: "Knowledge Base > FAQs". Unlike the URLs review page, this is a
+// Section: "Knowledge Base > FAQs" tab. Unlike the URLs review tab, this is a
 // real edit surface -- question/answer text, add, delete -- so edits are
 // staged locally (ghlSyncStatus flips to 'pending' the moment you save) and
 // only actually pushed to GHL when "Publish changes" is clicked. That
@@ -141,7 +141,7 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
     <div className="space-y-6 p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Knowledge Base — FAQs</h1>
+          <h1 className="text-lg font-semibold text-foreground">FAQs</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Edit, add, or remove FAQs. Changes stay in review until you publish them.
           </p>

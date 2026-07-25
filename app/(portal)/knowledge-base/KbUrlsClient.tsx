@@ -12,7 +12,7 @@ interface KbUrlsClientProps {
 
 const PAGE_SIZE = 50
 
-// Section: "Knowledge Base > URLs". Firecrawl/GHL's own crawler can surface
+// Section: "Knowledge Base > URLs" tab. Firecrawl/GHL's own crawler can surface
 // hundreds of discovered pages (470+ on our test client) -- this is a
 // review-and-exclude surface, not a create/edit one, so the interaction is
 // deliberately narrow: search, exclude/include per row, and bulk
@@ -85,7 +85,7 @@ export default function KbUrlsClient({ urls: initialUrls, clientId }: KbUrlsClie
   return (
     <div className="space-y-6 p-8">
       <div>
-        <h1 className="text-lg font-semibold text-foreground">Knowledge Base — URLs</h1>
+        <h1 className="text-lg font-semibold text-foreground">URLs</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Review the pages discovered for this client&rsquo;s knowledge base. Uncheck anything that shouldn&rsquo;t be trained on.
         </p>

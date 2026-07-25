@@ -1,10 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import KbFaqsClient from './KbFaqsClient'
-import type { KbFaq } from '@/types/kb'
+import KbTabs from './KbTabs'
+import type { KbUrl, KbFaq } from '@/types/kb'
 import type { GHLSyncStatus } from '@/types/consultant'
 
-export default async function KnowledgeBaseFaqsPage({
+export default async function KnowledgeBasePage({
   searchParams,
 }: {
   searchParams: Promise<{ client_id?: string }>
@@ -45,21 +45,36 @@ export default async function KnowledgeBaseFaqsPage({
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3 bg-card rounded-xl border border-border p-8">
         <h2 className="text-xl font-bold">Select a client</h2>
         <p className="text-muted-foreground text-sm text-center">
-          Choose a client from the sidebar search to review their knowledge base FAQs.
+          Choose a client from the sidebar search to review their knowledge base.
         </p>
       </div>
     )
   }
 
-  const { data: rows, error } = await supabase
-    .from('kb_faqs')
-    .select('id, question, answer, status, source, ghl_sync_status, updated_at')
-    .eq('client_id', activeClientId)
-    .eq('status', 'active')
-    .order('updated_at', { ascending: false })
-  if (error) console.error('kb_faqs query failed:', error)
+  const [{ data: urlRows, error: urlError }, { data: faqRows, error: faqError }] = await Promise.all([
+    supabase
+      .from('kb_urls')
+      .select('id, url, title, excluded')
+      .eq('client_id', activeClientId)
+      .order('url', { ascending: true }),
+    supabase
+      .from('kb_faqs')
+      .select('id, question, answer, status, source, ghl_sync_status, updated_at')
+      .eq('client_id', activeClientId)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false }),
+  ])
+  if (urlError) console.error('kb_urls query failed:', urlError)
+  if (faqError) console.error('kb_faqs query failed:', faqError)
 
-  const faqs: KbFaq[] = (rows ?? []).map((r) => ({
+  const urls: KbUrl[] = (urlRows ?? []).map((r) => ({
+    id: r.id,
+    url: r.url,
+    title: r.title,
+    excluded: r.excluded,
+  }))
+
+  const faqs: KbFaq[] = (faqRows ?? []).map((r) => ({
     id: r.id,
     question: r.question,
     answer: r.answer,
@@ -69,5 +84,5 @@ export default async function KnowledgeBaseFaqsPage({
     updatedAt: r.updated_at,
   }))
 
-  return <KbFaqsClient faqs={faqs} clientId={activeClientId} />
+  return <KbTabs urls={urls} faqs={faqs} clientId={activeClientId} />
 }

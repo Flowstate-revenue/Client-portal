@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { BarChart2, Receipt, Users, Globe, HelpCircle, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { BarChart2, Receipt, Users, Sparkles, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import ClientSearch from './ClientSearch'
 import SidebarAccountMenu from './SidebarAccountMenu'
@@ -13,8 +13,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', icon: BarChart2, href: '/dashboard' },
   { label: 'Billing', icon: Receipt, href: '/billing' },
   { label: 'Consultants', icon: Users, href: '/consultants' },
-  { label: 'KB: URLs', icon: Globe, href: '/knowledge-base/urls' },
-  { label: 'KB: FAQs', icon: HelpCircle, href: '/knowledge-base/faqs' },
+  { label: 'Knowledge Base', icon: Sparkles, href: '/knowledge-base' },
 ] as const
 
 interface SidebarProps {
