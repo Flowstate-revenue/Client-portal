@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  let body: { client_id?: string; faq_id?: string | null; question?: string; answer?: string }
+  let body: { client_id?: string; faq_id?: string | null; question?: string; answer?: string; kb_type?: string }
   try {
     body = await request.json()
   } catch {
@@ -17,12 +17,16 @@ export async function POST(request: Request) {
   if (!body.client_id || !body.question?.trim() || !body.answer?.trim()) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 })
   }
+  if (!body.faq_id && !body.kb_type) {
+    return NextResponse.json({ error: 'kb_type_required' }, { status: 400 })
+  }
 
   const { data, error } = await supabase.rpc('portal_upsert_kb_faq', {
     p_client_id: body.client_id,
     p_faq_id: body.faq_id ?? null,
     p_question: body.question,
     p_answer: body.answer,
+    p_kb_type: body.kb_type ?? null,
   })
   if (error) {
     const status = error.message.includes('forbidden') ? 403 : error.message.includes('not_found') ? 404 : 400

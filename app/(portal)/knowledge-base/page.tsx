@@ -59,7 +59,7 @@ export default async function KnowledgeBasePage({
       .order('url', { ascending: true }),
     supabase
       .from('kb_faqs')
-      .select('id, question, answer, status, source, ghl_sync_status, updated_at')
+      .select('id, question, answer, status, source, ghl_sync_status, updated_at, kb_type')
       .eq('client_id', activeClientId)
       .eq('status', 'active')
       .order('updated_at', { ascending: false }),
@@ -82,6 +82,7 @@ export default async function KnowledgeBasePage({
     source: r.source as 'generated' | 'portal',
     ghlSyncStatus: (['synced', 'pending', 'error'].includes(r.ghl_sync_status) ? r.ghl_sync_status : 'synced') as GHLSyncStatus,
     updatedAt: r.updated_at,
+    kbType: r.kb_type,
   }))
 
   return <KbTabs urls={urls} faqs={faqs} clientId={activeClientId} />

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Search, Plus, Pencil, Trash2, X, Check, UploadCloud } from 'lucide-react'
 import StatusBadge from '@/components/ui/StatusBadge'
-import type { KbFaq } from '@/types/kb'
+import { KB_TYPES, kbTypeLabel, type KbFaq, type KbType } from '@/types/kb'
 
 interface KbFaqsClientProps {
   faqs: KbFaq[]
@@ -22,19 +22,36 @@ const PAGE_SIZE = 20
 export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClientProps) {
   const [faqs, setFaqs] = useState(initialFaqs)
   const [search, setSearch] = useState('')
+  const [kbFilter, setKbFilter] = useState<KbType | 'all'>('all')
   const [page, setPage] = useState(1)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<{ question: string; answer: string }>({ question: '', answer: '' })
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '' })
+  const [newFaq, setNewFaq] = useState<{ question: string; answer: string; kbType: KbType | '' }>({
+    question: '',
+    answer: '',
+    kbType: '',
+  })
   const [publishing, setPublishing] = useState(false)
+
+  // Counts per KB for the filter pills -- lets the client jump straight to
+  // "Appointment Setter" or "Reviews" instead of scanning one flat list,
+  // since FAQ content genuinely differs by sales-motion stage.
+  const countsByKb = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const f of faqs) counts.set(f.kbType ?? 'unassigned', (counts.get(f.kbType ?? 'unassigned') ?? 0) + 1)
+    return counts
+  }, [faqs])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return faqs
-    return faqs.filter((f) => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q))
-  }, [faqs, search])
+    return faqs.filter((f) => {
+      if (kbFilter !== 'all' && f.kbType !== kbFilter) return false
+      if (!q) return true
+      return f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q)
+    })
+  }, [faqs, search, kbFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -50,13 +67,23 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
       toast.error('Question and answer are both required.')
       return
     }
+    if (!faqId && !newFaq.kbType) {
+      toast.error('Choose which knowledge base this FAQ belongs to.')
+      return
+    }
     const key = faqId ?? 'new'
     setSavingIds((prev) => new Set(prev).add(key))
     try {
       const res = await fetch('/api/kb/faqs/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: clientId, faq_id: faqId, question: draft.question, answer: draft.answer }),
+        body: JSON.stringify({
+          client_id: clientId,
+          faq_id: faqId,
+          question: draft.question,
+          answer: draft.answer,
+          ...(faqId ? {} : { kb_type: newFaq.kbType }),
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'save_failed')
@@ -78,11 +105,12 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
             source: 'portal',
             ghlSyncStatus: 'pending',
             updatedAt: new Date().toISOString(),
+            kbType: newFaq.kbType || null,
           },
           ...prev,
         ])
         setShowAddForm(false)
-        setNewFaq({ question: '', answer: '' })
+        setNewFaq({ question: '', answer: '', kbType: '' })
       }
       toast.success('Saved. Publish changes to push it to your knowledge base.')
     } catch (err) {
@@ -156,6 +184,17 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterPill active={kbFilter === 'all'} onClick={() => setKbFilter('all')}>
+          All ({faqs.length})
+        </FilterPill>
+        {KB_TYPES.map((kb) => (
+          <FilterPill key={kb.value} active={kbFilter === kb.value} onClick={() => setKbFilter(kb.value)}>
+            {kb.label} ({countsByKb.get(kb.value) ?? 0})
+          </FilterPill>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none" />
@@ -170,7 +209,10 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
           />
         </div>
         <button
-          onClick={() => setShowAddForm((v) => !v)}
+          onClick={() => {
+            setNewFaq((v) => ({ ...v, kbType: kbFilter !== 'all' ? kbFilter : v.kbType }))
+            setShowAddForm((v) => !v)
+          }}
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted cursor-pointer"
         >
           <Plus size={16} />
@@ -180,6 +222,20 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
 
       {showAddForm && (
         <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <select
+            value={newFaq.kbType}
+            onChange={(e) => setNewFaq((v) => ({ ...v, kbType: e.target.value as KbType }))}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="" disabled>
+              Which knowledge base is this for?
+            </option>
+            {KB_TYPES.map((kb) => (
+              <option key={kb.value} value={kb.value}>
+                {kb.label}
+              </option>
+            ))}
+          </select>
           <input
             value={newFaq.question}
             onChange={(e) => setNewFaq((v) => ({ ...v, question: e.target.value }))}
@@ -197,7 +253,7 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
             <button
               onClick={() => {
                 setShowAddForm(false)
-                setNewFaq({ question: '', answer: '' })
+                setNewFaq({ question: '', answer: '', kbType: '' })
               }}
               className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
             >
@@ -267,6 +323,9 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
                         <StatusBadge status={faq.ghlSyncStatus} />
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">{faq.answer}</p>
+                      <span className="mt-2 inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {kbTypeLabel(faq.kbType)}
+                      </span>
                     </div>
                     <div className="flex shrink-0 gap-1.5">
                       <button
@@ -318,5 +377,29 @@ export default function KbFaqsClient({ faqs: initialFaqs, clientId }: KbFaqsClie
         </div>
       )}
     </div>
+  )
+}
+
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-150 cursor-pointer ${
+        active
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
