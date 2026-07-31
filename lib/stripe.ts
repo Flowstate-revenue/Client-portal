@@ -1,8 +1,8 @@
 import Stripe from 'stripe'
 
 // Shared server-side Stripe client for the Vercel app. Used ONLY by the
-// three billing action routes (portal-session, cancel-product,
-// reactivate-product) that used to proxy to Supabase Edge Functions.
+// three billing action routes (portal-session, cancel-component,
+// reactivate-component) that used to proxy to Supabase Edge Functions.
 //
 // Why this changed: those three actions were each a 3-hop chain (browser
 // -> Vercel -> Supabase Edge Function -> Stripe, then all the way back)

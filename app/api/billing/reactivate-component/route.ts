@@ -3,13 +3,17 @@ import { createClient } from '@/utils/supabase/server'
 import { stripe } from '@/lib/stripe'
 
 // Lets a client (or an admin viewing-as) turn a previously-cancelled
-// outcome product back on -- adds it back to their weekly-billing
+// outcome component back on -- adds it back to their weekly-billing
 // subscription as a new metered line item (Stripe can't "undo" a deleted
 // item, so this creates a fresh one tagged the same way).
 //
-// Used to proxy to the stripe-reactivate-product Edge Function -- moved
-// to a direct Stripe call here for the same reason as
-// portal-session/route.ts and cancel-product/route.ts.
+// Used to proxy to the stripe-reactivate-component Edge Function (renamed
+// from stripe-reactivate-product) -- moved to a direct Stripe call here for
+// the same reason as portal-session/route.ts and cancel-component/route.ts.
+//
+// NAMING NOTE: Stripe's own subscription-item metadata key is still
+// literally "product_key" (unchanged on purpose -- see cancel-component's
+// header note).
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
     pu.role === 'admin' || pu.role === 'client_owner' || (pu.role === 'client_manager' && pu.is_super_manager === true)
   if (!hasBillingAccess) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
-  let body: { client_id?: string; product_key?: string }
+  let body: { client_id?: string; component_key?: string }
   try {
     body = await request.json()
   } catch {
@@ -38,17 +42,17 @@ export async function POST(request: Request) {
   }
 
   const clientId = pu.role === 'admin' ? body.client_id : pu.client_id
-  const productKey = body.product_key
-  if (!clientId || !productKey) {
+  const componentKey = body.component_key
+  if (!clientId || !componentKey) {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 })
   }
 
-  // Price id comes from product_prices now (synced live from Stripe by
-  // stripe-price-sync) instead of a hardcoded map -- pricing lives in
-  // exactly one place (Stripe). product_prices has an "authenticated can
-  // select" RLS policy, so the normal session-scoped client can read it
-  // directly. Emergency fallback only kicks in if that table is somehow
-  // empty or unreachable.
+  // Price id comes from component_prices now (renamed from product_prices --
+  // synced live from Stripe by stripe-price-sync) instead of a hardcoded
+  // map -- pricing lives in exactly one place (Stripe). component_prices
+  // has an "authenticated can select" RLS policy, so the normal
+  // session-scoped client can read it directly. Emergency fallback only
+  // kicks in if that table is somehow empty or unreachable.
   const EMERGENCY_FALLBACK_PRICE_IDS: Record<string, string> = {
     sit: process.env.PRICE_ID_SIT ?? 'price_1TmJLaHQFfAlfTssplyQSxIs',
     proposal_followup: process.env.PRICE_ID_PROPOSAL_FOLLOWUP ?? 'price_1TtA5sHQFfAlfTssQJ2E7wyS',
@@ -58,13 +62,13 @@ export async function POST(request: Request) {
   }
 
   const { data: priceRow } = await supabase
-    .from('product_prices')
+    .from('component_prices')
     .select('stripe_price_id')
-    .eq('product_key', productKey)
+    .eq('component_key', componentKey)
     .maybeSingle()
-  const price = priceRow?.stripe_price_id ?? EMERGENCY_FALLBACK_PRICE_IDS[productKey]
+  const price = priceRow?.stripe_price_id ?? EMERGENCY_FALLBACK_PRICE_IDS[componentKey]
 
-  if (!price) return NextResponse.json({ error: 'unknown_product' }, { status: 400 })
+  if (!price) return NextResponse.json({ error: 'unknown_component' }, { status: 400 })
 
   // RLS (has_client_access) scopes this to a client the caller can see.
   const { data: client } = await supabase
@@ -82,19 +86,19 @@ export async function POST(request: Request) {
       subscription: client.stripe_subscription_id,
       limit: 100,
     })
-    const alreadyActive = items.data.some((i) => i.metadata?.product_key === productKey)
+    const alreadyActive = items.data.some((i) => i.metadata?.product_key === componentKey)
     if (alreadyActive) return NextResponse.json({ ok: true, already_active: true })
 
     await stripe.subscriptionItems.create({
       subscription: client.stripe_subscription_id,
       price,
-      metadata: { product_key: productKey },
+      metadata: { product_key: componentKey },
       proration_behavior: 'none',
     })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('reactivate-product stripe call failed:', err)
+    console.error('reactivate-component stripe call failed:', err)
     return NextResponse.json({ error: 'stripe_error' }, { status: 502 })
   }
 }

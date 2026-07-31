@@ -1,8 +1,13 @@
-// Single source of truth for Flowstate's five billable products.
+// Single source of truth for Flowstate's five billable components.
 // Consumed by Billing (labels + badge classes) and the Dashboard (dot/chart
-// hex). Colors are all-cool on purpose so no product reads as good vs bad.
+// hex). Colors are all-cool on purpose so no component reads as good vs bad.
+//
+// NAMING NOTE: these are FLOWSTATE'S OWN 5 billing engines (renamed from
+// "product" to "component" -- Bart's call, so the term "product" stays free
+// for a CLIENT's own sales offerings, e.g. a solar company's roof/pool/solar
+// products, elsewhere in the app).
 
-export const PRODUCT_KEYS = [
+export const COMPONENT_KEYS = [
   'sit',
   'proposal_followup',
   'reactivation',
@@ -10,10 +15,10 @@ export const PRODUCT_KEYS = [
   'review',
 ] as const
 
-export type ProductKey = (typeof PRODUCT_KEYS)[number]
+export type ComponentKey = (typeof COMPONENT_KEYS)[number]
 
-export interface Product {
-  key: ProductKey
+export interface Component {
+  key: ComponentKey
   label: string // singular — billing rows, badges, filters
   labelPlural: string // plural — dashboard cards
   hex: string // dots and charts
@@ -21,7 +26,7 @@ export interface Product {
   description: string // plain-English goal/outcome, used on the My Account subscriptions cards
 }
 
-export const PRODUCTS: Record<ProductKey, Product> = {
+export const COMPONENTS: Record<ComponentKey, Component> = {
   sit: {
     key: 'sit',
     label: 'Sit Appointment',
@@ -70,12 +75,12 @@ export const PRODUCTS: Record<ProductKey, Product> = {
 }
 
 // Ordered list for iteration (dashboard cards, chart series, filters).
-export const PRODUCT_LIST: Product[] = PRODUCT_KEYS.map((k) => PRODUCTS[k])
+export const COMPONENT_LIST: Component[] = COMPONENT_KEYS.map((k) => COMPONENTS[k])
 
 // Lookup maps matching the billing page's existing { key: value } shape.
-export const PRODUCT_LABELS: Record<string, string> = Object.fromEntries(
-  PRODUCT_LIST.map((p) => [p.key, p.label])
+export const COMPONENT_LABELS: Record<string, string> = Object.fromEntries(
+  COMPONENT_LIST.map((c) => [c.key, c.label])
 )
-export const PRODUCT_BADGES: Record<string, string> = Object.fromEntries(
-  PRODUCT_LIST.map((p) => [p.key, p.badge])
+export const COMPONENT_BADGES: Record<string, string> = Object.fromEntries(
+  COMPONENT_LIST.map((c) => [c.key, c.badge])
 )

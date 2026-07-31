@@ -79,7 +79,7 @@ export default async function MyAccountPage({
   const canManageTeam =
     portalUser.role === 'admin' || portalUser.role === 'client_owner' || portalUser.is_super_manager === true
 
-  // Billing (client_products, Manage Billing modal) lives on the Billing
+  // Billing (client_components, Manage Billing modal) lives on the Billing
   // page now -- this page no longer needs that data.
   return (
     <MyAccountClient

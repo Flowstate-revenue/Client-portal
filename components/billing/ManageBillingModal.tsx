@@ -8,15 +8,15 @@ import OutcomeSubscriptionsPanel from './OutcomeSubscriptionsPanel'
 // Lives on the Billing page now (not My Account) -- Bart's call: billing
 // management belongs next to the events it bills for, not mixed into
 // company/address profile editing. Opened from a "Manage Billing" button,
-// shows the 5 outcome products (Turn On/Off) plus a link out to Stripe's
+// shows the 5 outcome components (Turn On/Off) plus a link out to Stripe's
 // hosted portal for the actual card/invoices.
 interface ManageBillingModalProps {
   activeClientId: string
-  activeProducts: { product_key: string; status: string }[]
+  activeComponents: { component_key: string; status: string }[]
   onClose: () => void
 }
 
-export default function ManageBillingModal({ activeClientId, activeProducts, onClose }: ManageBillingModalProps) {
+export default function ManageBillingModal({ activeClientId, activeComponents, onClose }: ManageBillingModalProps) {
   // Opens Stripe's hosted Customer Portal -- card on file, invoices,
   // receipts. Deliberately NOT rebuilt in-house: this is the one place
   // actual card data changes hands, and Stripe's hosted flow keeps that
@@ -49,7 +49,7 @@ export default function ManageBillingModal({ activeClientId, activeProducts, onC
         <div>
           <h2 className="text-lg font-bold tracking-tight text-foreground">Manage Billing</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Turn individual products on or off, or manage your payment method and invoices.
+            Turn individual components on or off, or manage your payment method and invoices.
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export default function ManageBillingModal({ activeClientId, activeProducts, onC
           </button>
         </div>
 
-        <OutcomeSubscriptionsPanel activeClientId={activeClientId} activeProducts={activeProducts} />
+        <OutcomeSubscriptionsPanel activeClientId={activeClientId} activeComponents={activeComponents} />
       </div>
     </Modal>
   )

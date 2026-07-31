@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Layers } from 'lucide-react'
-import { PRODUCT_LIST } from '@/lib/products'
+import { COMPONENT_LIST } from '@/lib/components'
 import type { DashboardSummary } from '@/lib/dashboard-metrics'
 
 interface SecondaryEngineBreakdownProps {
@@ -16,15 +16,15 @@ const COUNT_KEY: Record<string, keyof DashboardSummary> = {
   review: 'reviewsTotal',
 }
 
-// Section C. Sits is the hero product and gets the entire top section above;
+// Section C. Sits is the hero component and gets the entire top section above;
 // everything else is low-volume at launch and would read as false-equal-
 // weight if it sat in its own hero card. Collapsed by default to keep the
 // page's headline message ("are we delivering sits, fast") uncluttered --
 // the toggle is here for the client who wants to check on the other engines.
 export default function SecondaryEngineBreakdown({ summary }: SecondaryEngineBreakdownProps) {
   const [open, setOpen] = useState(false)
-  const secondaryProducts = PRODUCT_LIST.filter((p) => p.key !== 'sit')
-  const totalSecondary = secondaryProducts.reduce((sum, p) => sum + (Number(summary[COUNT_KEY[p.key]]) || 0), 0)
+  const secondaryComponents = COMPONENT_LIST.filter((c) => c.key !== 'sit')
+  const totalSecondary = secondaryComponents.reduce((sum, c) => sum + (Number(summary[COUNT_KEY[c.key]]) || 0), 0)
 
   return (
     <div className="rounded-xl border border-border bg-card">
@@ -45,14 +45,14 @@ export default function SecondaryEngineBreakdown({ summary }: SecondaryEngineBre
 
       {open && (
         <div className="flex flex-wrap gap-2 border-t border-border px-5 py-4">
-          {secondaryProducts.map((p) => {
-            const count = Number(summary[COUNT_KEY[p.key]]) || 0
+          {secondaryComponents.map((c) => {
+            const count = Number(summary[COUNT_KEY[c.key]]) || 0
             return (
               <span
-                key={p.key}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${p.badge}`}
+                key={c.key}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${c.badge}`}
               >
-                {p.labelPlural}
+                {c.labelPlural}
                 <span className="tabular-nums">{count}</span>
               </span>
             )

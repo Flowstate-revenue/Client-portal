@@ -90,16 +90,16 @@ export default async function BillingPage({
 
   const resolvedClientId = client_id || portalUser.client_id || null
 
-  // client_products reflects real Stripe subscription state -- written by
+  // client_components reflects real Stripe subscription state -- written by
   // stripe-subscription-sync, never by the portal. Feeds the Manage
   // Billing modal's Turn On/Off panel.
-  let activeProducts: { product_key: string; status: string }[] = []
+  let activeComponents: { component_key: string; status: string }[] = []
   if (resolvedClientId) {
-    const { data: productRows } = await supabase
-      .from('client_products')
-      .select('product_key, status')
+    const { data: componentRows } = await supabase
+      .from('client_components')
+      .select('component_key, status')
       .eq('client_id', resolvedClientId)
-    activeProducts = productRows || []
+    activeComponents = componentRows || []
   }
 
   return (
@@ -107,7 +107,7 @@ export default async function BillingPage({
       initialEvents={(events as unknown as BillableEvent[]) || []}
       role={portalUser.role}
       activeClientId={resolvedClientId}
-      activeProducts={activeProducts}
+      activeComponents={activeComponents}
       hasBillingAccess={hasBillingAccess}
     />
   )

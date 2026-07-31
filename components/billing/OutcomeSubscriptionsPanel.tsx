@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Power, PowerOff } from 'lucide-react'
 import { toast } from 'sonner'
-import { PRODUCT_LIST, PRODUCT_LABELS as OUTCOME_LABELS } from '@/lib/products'
+import { COMPONENT_LIST, COMPONENT_LABELS as OUTCOME_LABELS } from '@/lib/components'
 
 // Extracted out of BillingClient.tsx so it can live on the My Account page
 // instead (Bart's call: this belongs next to profile/billing management,
@@ -12,90 +12,90 @@ import { PRODUCT_LIST, PRODUCT_LABELS as OUTCOME_LABELS } from '@/lib/products'
 // from the server to get going.
 interface OutcomeSubscriptionsPanelProps {
   activeClientId: string
-  activeProducts: { product_key: string; status: string }[]
+  activeComponents: { component_key: string; status: string }[]
 }
 
 export default function OutcomeSubscriptionsPanel({
   activeClientId,
-  activeProducts,
+  activeComponents,
 }: OutcomeSubscriptionsPanelProps) {
-  // Seeded from activeProducts (real data from Stripe via
+  // Seeded from activeComponents (real data from Stripe via
   // stripe-subscription-sync, fetched fresh by the server component on
   // every page load) -- not a client-side guess. Updated optimistically
   // the moment a Turn On/Off click succeeds, so the UI reflects it
   // instantly instead of waiting on a page refresh + webhook round-trip.
-  const [cancelledProducts, setCancelledProducts] = useState<Set<string>>(
-    () => new Set(activeProducts.filter((p) => p.status === 'cancelled').map((p) => p.product_key))
+  const [cancelledComponents, setCancelledComponents] = useState<Set<string>>(
+    () => new Set(activeComponents.filter((c) => c.status === 'cancelled').map((c) => c.component_key))
   )
-  // Tracks whichever product currently has a Turn On / Turn Off request
+  // Tracks whichever component currently has a Turn On / Turn Off request
   // in flight, so we can disable just that one button.
-  const [pendingProductKey, setPendingProductKey] = useState<string | null>(null)
+  const [pendingComponentKey, setPendingComponentKey] = useState<string | null>(null)
 
-  // Turns OFF one product -- removes it from the client's weekly-billing
-  // subscription via stripe-cancel-product. Doesn't touch the other
-  // products or cancel the whole account -- that's a deliberately
+  // Turns OFF one component -- removes it from the client's weekly-billing
+  // subscription via stripe-cancel-component. Doesn't touch the other
+  // components or cancel the whole account -- that's a deliberately
   // separate, bigger action (not built here; contact-us for now).
-  const handleCancelProduct = async (productKey: string) => {
-    const label = OUTCOME_LABELS[productKey] || productKey
+  const handleCancelComponent = async (componentKey: string) => {
+    const label = OUTCOME_LABELS[componentKey] || componentKey
     const confirmed = window.confirm(
       `Turn off "${label}"? This removes it from your weekly invoice going forward. You can turn it back on any time.`
     )
     if (!confirmed) return
 
-    setPendingProductKey(productKey)
+    setPendingComponentKey(componentKey)
     try {
-      const res = await fetch('/api/billing/cancel-product', {
+      const res = await fetch('/api/billing/cancel-component', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: activeClientId, product_key: productKey }),
+        body: JSON.stringify({ client_id: activeClientId, component_key: componentKey }),
       })
       const json = await res.json()
       if (!res.ok || !json.ok) {
-        if (json.error === 'last_product_use_full_cancel') {
-          toast.error('This is your last active product. To stop all billing, contact us to cancel your account.')
+        if (json.error === 'last_component_use_full_cancel') {
+          toast.error('This is your last active component. To stop all billing, contact us to cancel your account.')
         } else {
-          toast.error('Could not turn that product off. Try again shortly.')
+          toast.error('Could not turn that component off. Try again shortly.')
         }
         return
       }
-      setCancelledProducts((prev) => new Set(prev).add(productKey))
+      setCancelledComponents((prev) => new Set(prev).add(componentKey))
       toast.success(`${label} turned off -- removed from your weekly billing.`)
     } catch {
       toast.error('Could not reach billing. Check your connection and try again.')
     } finally {
-      setPendingProductKey(null)
+      setPendingComponentKey(null)
     }
   }
 
-  // Turns ON one product -- adds it back to the client's weekly-billing
-  // subscription via stripe-reactivate-product. Under the hood this
+  // Turns ON one component -- adds it back to the client's weekly-billing
+  // subscription via stripe-reactivate-component. Under the hood this
   // creates a brand-new subscription item (Stripe can't "undo" a deleted
   // one), but from the client's side it's just flipping a switch back on.
-  const handleReactivateProduct = async (productKey: string) => {
-    const label = OUTCOME_LABELS[productKey] || productKey
+  const handleReactivateComponent = async (componentKey: string) => {
+    const label = OUTCOME_LABELS[componentKey] || componentKey
 
-    setPendingProductKey(productKey)
+    setPendingComponentKey(componentKey)
     try {
-      const res = await fetch('/api/billing/reactivate-product', {
+      const res = await fetch('/api/billing/reactivate-component', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: activeClientId, product_key: productKey }),
+        body: JSON.stringify({ client_id: activeClientId, component_key: componentKey }),
       })
       const json = await res.json()
       if (!res.ok || !json.ok) {
-        toast.error('Could not turn that product on. Try again shortly.')
+        toast.error('Could not turn that component on. Try again shortly.')
         return
       }
-      setCancelledProducts((prev) => {
+      setCancelledComponents((prev) => {
         const next = new Set(prev)
-        next.delete(productKey)
+        next.delete(componentKey)
         return next
       })
       toast.success(`${label} is back on -- included in your next weekly invoice.`)
     } catch {
       toast.error('Could not reach billing. Check your connection and try again.')
     } finally {
-      setPendingProductKey(null)
+      setPendingComponentKey(null)
     }
   }
 
@@ -106,32 +106,32 @@ export default function OutcomeSubscriptionsPanel({
           Your Outcome Subscriptions
         </span>
         <span className="text-xs text-muted-foreground">
-          One weekly invoice covers all active products below.
+          One weekly invoice covers all active components below.
         </span>
       </div>
       {/* Two-up, not five-across -- each card gets room for a real
-          description of what the product does, not just a label. */}
+          description of what the component does, not just a label. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {PRODUCT_LIST.map((product) => {
-          const isCancelled = cancelledProducts.has(product.key)
-          const isPending = pendingProductKey === product.key
+        {COMPONENT_LIST.map((component) => {
+          const isCancelled = cancelledComponents.has(component.key)
+          const isPending = pendingComponentKey === component.key
           return (
             <div
-              key={product.key}
+              key={component.key}
               className={`rounded-xl border p-5 ${
                 isCancelled ? 'border-border bg-muted/30' : 'border-border bg-background'
               }`}
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <h3 className={`text-base font-semibold ${isCancelled ? 'text-muted-foreground' : 'text-foreground'}`}>
-                  {product.labelPlural}
+                  {component.labelPlural}
                 </h3>
                 {isCancelled ? (
                   // Off = red, and says exactly what clicking it does. We
                   // don't expect anyone to land here often (no billing, no
                   // problem) but when they do, the fix should be obvious.
                   <button
-                    onClick={() => handleReactivateProduct(product.key)}
+                    onClick={() => handleReactivateComponent(component.key)}
                     disabled={isPending}
                     className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-500 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
                   >
@@ -141,10 +141,10 @@ export default function OutcomeSubscriptionsPanel({
                 ) : (
                   // On = green, reads as a status ("On") rather than an
                   // invitation to turn it off. Clicking still opens the
-                  // confirm dialog in handleCancelProduct -- the route to
+                  // confirm dialog in handleCancelComponent -- the route to
                   // turn it off exists, it's just not the loud option.
                   <button
-                    onClick={() => handleCancelProduct(product.key)}
+                    onClick={() => handleCancelComponent(component.key)}
                     disabled={isPending}
                     className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-500 hover:bg-emerald-500/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
                   >
@@ -153,7 +153,7 @@ export default function OutcomeSubscriptionsPanel({
                   </button>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{component.description}</p>
             </div>
           )
         })}

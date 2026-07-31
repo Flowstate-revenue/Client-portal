@@ -38,7 +38,7 @@ interface DashboardClientProps {
 // Flowstate-Dashboard-Metrics-Reference for the full rationale. Layout:
 //   A. Hero KPI bar (4 cards) -- the launch-set metrics, priority 5/4
 //   B. Live funnel snapshot + no-show/rescue -- the visual anchor, priority 3
-//   C. Secondary engine breakdown -- collapsed, low-volume products
+//   C. Secondary engine breakdown -- collapsed, low-volume components
 export default function DashboardClient({ data }: DashboardClientProps) {
   const { summary, trend, funnelCounts, period, qualification, qualifiedYield, speedToFirstTouch, noShowRescue } = data
 

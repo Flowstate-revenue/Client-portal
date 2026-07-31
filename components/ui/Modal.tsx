@@ -7,7 +7,7 @@ interface ModalProps {
   onClose: () => void
   children: React.ReactNode
   // Optional override for wider content (e.g. the billing modal's 2-up
-  // product cards). Defaults to the original max-w-lg so every existing
+  // component cards). Defaults to the original max-w-lg so every existing
   // caller (consultant modals, etc.) is unaffected.
   maxWidthClassName?: string
 }

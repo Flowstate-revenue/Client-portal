@@ -3,10 +3,10 @@
 import { useState, useMemo } from 'react'
 import { Search, SlidersHorizontal, ArrowUpDown, Receipt, Calendar, CreditCard } from 'lucide-react'
 import type { BillableEvent } from '@/types/supabase'
-import { PRODUCT_LABELS as OUTCOME_LABELS, PRODUCT_BADGES as OUTCOME_COLORS } from '@/lib/products'
+import { COMPONENT_LABELS as OUTCOME_LABELS, COMPONENT_BADGES as OUTCOME_COLORS } from '@/lib/components'
 import ManageBillingModal from '@/components/billing/ManageBillingModal'
 
-// "Manage Billing" opens a modal here (product Turn On/Off + link to
+// "Manage Billing" opens a modal here (component Turn On/Off + link to
 // Stripe's hosted portal) -- moved back from /my-account, which is now
 // purely profile/address. Billing management belongs next to the events
 // it bills for. See components/billing/ManageBillingModal.tsx.
@@ -14,7 +14,7 @@ interface BillingClientProps {
   initialEvents: BillableEvent[]
   role: string
   activeClientId: string | null
-  activeProducts: { product_key: string; status: string }[]
+  activeComponents: { component_key: string; status: string }[]
   // admin/client_owner always true; client_manager only if they're a
   // super manager. Computed server-side in
   // page.tsx -- gates the "Manage Billing" button only. The underlying
@@ -45,7 +45,7 @@ export default function BillingClient({
   initialEvents,
   role,
   activeClientId,
-  activeProducts,
+  activeComponents,
   hasBillingAccess,
 }: BillingClientProps) {
   const [viewMode, setViewMode] = useState<'current' | 'previous'>('current') // 'current' = open items, 'previous' = previous month paid items
@@ -226,12 +226,12 @@ export default function BillingClient({
             </button>
           </div>
 
-          {/* Manage Billing CTA -- opens the product Turn On/Off +
+          {/* Manage Billing CTA -- opens the component Turn On/Off +
               payment method modal. Admins viewing "no client selected"
               (all-clients view) don't get this, same as before. A
               client_manager without the billing scope doesn't get the
               button at all -- they can still see every event on this
-              page, just not touch payment method/products. */}
+              page, just not touch payment method/components. */}
           {activeClientId && hasBillingAccess && (
             <button
               onClick={() => setBillingModalOpen(true)}
@@ -247,7 +247,7 @@ export default function BillingClient({
       {billingModalOpen && activeClientId && (
         <ManageBillingModal
           activeClientId={activeClientId}
-          activeProducts={activeProducts}
+          activeComponents={activeComponents}
           onClose={() => setBillingModalOpen(false)}
         />
       )}
