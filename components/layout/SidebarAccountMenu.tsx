@@ -28,8 +28,24 @@ export default function SidebarAccountMenu({ portalUser, clients, companyName, c
   const router = useRouter()
   const searchParams = useSearchParams()
   const containerRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [open, setOpen] = useState(false)
+
+  // Cancel any pending close (mouse re-entered the trigger or flyout).
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  // Close after a short grace period so the cursor can travel from the
+  // trigger, across the gap, and onto the flyout without it vanishing.
+  const scheduleClose = () => {
+    cancelClose()
+    closeTimer.current = setTimeout(() => setOpen(false), 150)
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -43,6 +59,7 @@ export default function SidebarAccountMenu({ portalUser, clients, companyName, c
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
+      cancelClose()
     }
   }, [])
 
@@ -69,8 +86,11 @@ export default function SidebarAccountMenu({ portalUser, clients, companyName, c
     <div
       ref={containerRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => {
+        cancelClose()
+        setOpen(true)
+      }}
+      onMouseLeave={scheduleClose}
     >
       <button
         type="button"
@@ -93,6 +113,10 @@ export default function SidebarAccountMenu({ portalUser, clients, companyName, c
       </button>
 
       {open && (
+        <>
+        {/* Transparent bridge spanning the gap between trigger and flyout so
+            the cursor can cross without a mouseout closing the menu. */}
+        <span aria-hidden className="absolute bottom-0 left-full z-40 h-full w-2" />
         <div
           role="menu"
           className="absolute bottom-0 left-full z-50 ml-2 w-52 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-lg"
@@ -129,6 +153,7 @@ export default function SidebarAccountMenu({ portalUser, clients, companyName, c
             Log Out
           </button>
         </div>
+        </>
       )}
     </div>
   )
