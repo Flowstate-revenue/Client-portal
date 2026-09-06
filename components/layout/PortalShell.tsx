@@ -22,7 +22,6 @@ export default function PortalShell({ children, portalUser, clients, companyName
   // localStorage right after mount -- same "read real value after mount"
   // pattern as useMounted/ThemeToggle elsewhere in this app.
   const [collapsed, setCollapsed] = useState(false)
-  const [peeking, setPeeking] = useState(false)
   const [focusClientSearch, setFocusClientSearch] = useState(false)
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export default function PortalShell({ children, portalUser, clients, companyName
   // the arrow toggle alone shouldn't steal focus, so this is kept separate.
   const requestSearchExpand = () => {
     if (collapsed) toggleCollapsed()
-    setPeeking(false) // now genuinely expanded -- don't leave a stale peek flag armed
     setFocusClientSearch(true)
   }
 
@@ -57,9 +55,6 @@ export default function PortalShell({ children, portalUser, clients, companyName
         companyName={companyName}
         collapsed={collapsed}
         onToggleCollapsed={toggleCollapsed}
-        peeking={peeking}
-        onPeekStart={() => setPeeking(true)}
-        onPeekEnd={() => setPeeking(false)}
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         onRequestSearchExpand={requestSearchExpand}
@@ -67,9 +62,8 @@ export default function PortalShell({ children, portalUser, clients, companyName
         onClientSearchFocused={() => setFocusClientSearch(false)}
       />
 
-      {/* Main body wrapper. Gutter reflects only the persisted collapsed
-          state -- the hover "peek" is a temporary overlay and must not
-          reflow content underneath it. */}
+      {/* Main body wrapper. Gutter tracks the persisted collapsed state,
+          toggled explicitly via the sidebar arrow. */}
       <div className={`flex flex-col flex-1 min-w-0 transition-[padding] duration-200 ease-out ${collapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         <TopBar onMenuClick={() => setMobileMenuOpen(true)} />
         <main className="flex-1 p-6 md:p-8 min-w-0">

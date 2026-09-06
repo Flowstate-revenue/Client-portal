@@ -23,10 +23,6 @@ interface SidebarProps {
   /** Persisted collapse state (arrow-toggled), lifted to PortalShell so it can also size the content gutter. */
   collapsed: boolean
   onToggleCollapsed: () => void
-  /** Temporary hover "peek" -- overlays the collapsed rail without shifting page content. */
-  peeking: boolean
-  onPeekStart: () => void
-  onPeekEnd: () => void
   /** Mobile drawer state. */
   isOpen?: boolean
   onClose?: () => void
@@ -183,20 +179,15 @@ export default function Sidebar({
   companyName,
   collapsed,
   onToggleCollapsed,
-  peeking,
-  onPeekStart,
-  onPeekEnd,
   isOpen,
   onClose,
   onRequestSearchExpand,
   focusClientSearch,
   onClientSearchFocused,
 }: SidebarProps) {
-  // "Visually expanded" = either genuinely expanded, or collapsed-but-peeking
-  // on hover. The peek is a temporary overlay (the aside is already
-  // `fixed`), so it never reflows the page's content gutter -- only the
-  // arrow-toggled `collapsed` state does that (see PortalShell).
-  const showLabels = !collapsed || peeking
+  // Width follows the persisted collapse state only -- the arrow toggle is
+  // the single, explicit control (no hover auto-expand).
+  const showLabels = !collapsed
 
   return (
     <>
@@ -204,9 +195,7 @@ export default function Sidebar({
       <aside
         className={`hidden md:flex fixed inset-y-0 left-0 z-20 flex-col transition-[width] duration-200 ease-out ${
           showLabels ? 'w-64' : 'w-16'
-        } ${peeking && collapsed ? 'shadow-2xl' : ''}`}
-        onMouseEnter={collapsed ? onPeekStart : undefined}
-        onMouseLeave={collapsed ? onPeekEnd : undefined}
+        }`}
       >
         <SidebarContent
           portalUser={portalUser}
